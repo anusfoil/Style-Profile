@@ -29,7 +29,7 @@ def parse_match(match_file):
 
     return match
 
-def align_perf_score(perf, score, use_midi=True, use_matched=True):
+def align_perf_score(perf, score, score_format="musicxml", use_matched=True):
     """using eita's alignment algorithm, save "_match.txt" files in dataset. Only run once
     perf: str without .mid extension, e.g "/import/c4dm-datasets/ATEPP/Sergei_Rachmaninoff/Etudes-Tableaux,_Op.39/No.6_in_A_Minor/00159"
     score: str without .mxl extension, e.g "/import/c4dm-datasets/ATEPP/Sergei_Rachmaninoff/Etudes-Tableaux,_Op.39/No.6_in_A_Minor/Rachmaninov_Etude-Tableau_op._39_no._6"
@@ -44,9 +44,9 @@ def align_perf_score(perf, score, use_midi=True, use_matched=True):
     perf = perf.replace("(", "\(")
     perf = perf.replace(")", "\)")
 
-    if use_midi:
-        os.system(f"./AlignmentTool_v190813/MIDIToMIDIAlign.sh {score} {perf}")
-    else:
+    if score_format == "xml":
+        os.system(f"./AlignmentTool_v190813/XMLToMIDIAlign.sh {score} {perf}")
+    elif score_format == "musicxml":
         os.system(f"./AlignmentTool_v190813/MusicXMLToMIDIAlign.sh {score} {perf}")
     
     
@@ -74,20 +74,23 @@ def generate_alignments():
     score_list = data_with_score["score_path"].tolist()
 
     for perf, score in tqdm(zip(midi_list, score_list)):
-        if "Schubert" not in perf:
-            continue
 
         """remove extension"""
         perf = DATA_DIR + perf[:-4]
         score = DATA_DIR + ".".join(score.split(".")[:-1])
 
-        if not os.path.exists(score + ".mid"):
+        if os.path.exists(score + ".mxl"):
+            # unzip the mxl file
+            score_dir = "/".join(score.split("/")[:-1])
+            os.system(f"unzip -o {score}.mxl -d {score_dir}")
+
+        if os.path.exists(score + ".musicxml"):
+            align_perf_score(perf, score, score_format="musicxml")
+        elif os.path.exists(score_dir + "/score.xml"):
+            align_perf_score(perf, score_dir + "/score", score_format="xml")
+        else:
             print("score doesn't exist! " + score)
             continue
-
-        align_perf_score(perf, score)
-        # hook()
-
 
 def filter_unmatched():
     """filter out the pieces that"""
@@ -97,20 +100,37 @@ def filter_unmatched():
     midi_list = data_with_score["midi_path"].tolist()
     score_list = data_with_score["score_path"].tolist()
 
-    count = 0
+    mxl_count, mxl_unmatched_count = 0, 0
+    musicxml_count, musicxml_unmatched_count = 0, 0
     for perf, score in tqdm(zip(midi_list, score_list)):
         perf = DATA_DIR + perf[:-4]
         score = DATA_DIR + ".".join(score.split(".")[:-1])
 
-        if os.path.exists(score + ".mid") and (not os.path.exists(perf + "_match.txt")):
-            # print(perf)
-            count += 1
-            pass
-    
-    print(count)
+        if os.path.exists(score + ".mxl"):
+            mxl_count += 1
+            if (not os.path.exists(perf + "_match.txt")):
+                mxl_unmatched_count += 1
 
+        if os.path.exists(score + ".musicxml"):
+            musicxml_count += 1
+            if (not os.path.exists(perf + "_match.txt")):
+                musicxml_unmatched_count += 1
+
+    print(f"{mxl_unmatched_count}/{mxl_count}")
+    print(f"{musicxml_unmatched_count}/{musicxml_count}")
+
+
+def remove_all_matched():
+    all_match_files = glob.glob(f"{DATA_DIR}/**/*_match.txt", recursive=True)
+    for file in all_match_files:
+        file = file.replace("(", "\(")
+        file = file.replace(")", "\)")
+        os.system(f"rm {file}")
+
+    return 
 
 if __name__ == "__main__":
-    # generate_alignments()
-    filter_unmatched()
+    # remove_all_matched()
+    generate_alignments()
+    # filter_unmatched()
     pass
