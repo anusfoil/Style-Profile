@@ -1,0 +1,7 @@
+Score doesn't have a repeat but music does:
+- Johann_Sebastian_Bach/Das_Wohltemperierte_Klavier_Book2/Book_2,_BWV_870-893:_Prelude_in_A_minor_BWV_889
+
+Data still needs merging: 
+- Mozart K576 has two folders - one with 2nd mvt and other with 1st and 3rd
+- there are two folders of chopin prelude op.28!!
+- there are two barcarolle 60!

@@ -2,7 +2,8 @@ from sklearn import tree, svm
 from sklearn.ensemble import AdaBoostClassifier, GradientBoostingClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import classification_report
-from asynchrony import *
+import pandas as pd
+from compute_attributes import *
 
 
 def classify():
@@ -20,15 +21,25 @@ def classify():
     X = list(zip(*[attributes_train[attri] for attri in ATTRIBUTES]))
     Y = attributes_train['artist_id'].tolist()
 
+    df = pd.DataFrame(X, Y)
+    df = df[df[3] != np.float("-inf")]
+    X = df.values.tolist()
+    Y = df.index.tolist()
+
     # clf = tree.DecisionTreeClassifier()
-    clf = svm.SVC()
+    # clf = svm.SVC()
     # clf = AdaBoostClassifier(n_estimators=100)
     # clf = GradientBoostingClassifier(n_estimators=100, learning_rate=1.0, max_depth=1, random_state=0)
-    # clf = MLPClassifier(alpha=1e-5, hidden_layer_sizes=(128, 64, 32), random_state=1, warm_start=True)
+    clf = MLPClassifier(alpha=1e-5, hidden_layer_sizes=(128, 64, 32), random_state=1, warm_start=True)
     clf = clf.fit(X, Y)
 
     y_true = attributes_test['artist_id'].tolist()
-    y_pred = clf.predict(list(zip(*[attributes_test[attri] for attri in ATTRIBUTES])))
+    X_ = list(zip(*[attributes_test[attri] for attri in ATTRIBUTES]))
+    df = pd.DataFrame(X_, y_true)
+    df = df[df[3] != np.float("-inf")]
+    X_ = df.values.tolist()
+    y_true = df.index.tolist()    
+    y_pred = clf.predict(X_)
     print(classification_report(y_true, y_pred))
 
 
