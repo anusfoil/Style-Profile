@@ -19,6 +19,15 @@ def note_name_to_number(note_name):
         return p.midi
 
 def async_attributes(onset_groups, match, v=False):
+
+    if not onset_groups:
+        return {
+        "sp_async_delta": np.nan,
+        "sp_async_cor_onset": np.nan,
+        "sp_async_cor_vel": np.nan,
+        "sp_async_parts": np.nan
+    }
+
     tol_delta, tol_cor, tol_cor_vel = 0, 0, 0
     for _, indices in onset_groups.items():
         onset_times = match.iloc[indices]['onset_time']
@@ -38,7 +47,6 @@ def async_attributes(onset_groups, match, v=False):
         cor = np.corrcoef(midi_vel, onset_times)[0, 1]
         tol_cor_vel += (0 if np.isnan(cor) else cor)
 
-        
 
     return {
         "sp_async_delta": (tol_delta / len(onset_groups)),

@@ -8,37 +8,45 @@ An analysis workflow is as follows:
 ## Expression categories 
 
 #### Asynchrony 
-```sp_dynamics_delta```: [-1, 1]
+```sp_asynchrony_delta```: [-1, 1]
 
-```sp_dynamics_cor_onset```
+```sp_asynchrony_cor_onset```: 
 
-```sp_dynamics_cor_vel```
+```sp_asynchrony_cor_vel```
 
-```sp_dynamics_cor_parts```
+```sp_asynchrony_cor_parts```
 
 
 #### Articulation
 ```sp_articulation_ratio```
 
+
 #### Tempo 
+```sp_tempo_std```: std of all local tempo.
 
 #### Dynamics 
-```sp_dynamics_agreement```
+```sp_dynamics_agreement```: The amount of 
 
-```sp_dynamics_consistency_std```
+```sp_dynamics_consistency_std```: 
 
 #### Phrasing 
+```sp_rubato_```
 
 #### Textural 
 
 ## Stats on ATEPP dataset
 
 #### Issues & Losses 
+
+There are numerous 
+
 |  |  |
 | ----------- | ----------- |
-| #. pieces with score      |        |
-| #. pieces aligned         |        |
-
+| #. pieces with xml score      |        |
+| #. pieces aligned             |  2730  |
+| #. valid alignment            |    |
+| #. pieces with scores parsed by partitura |        |
+| #. pieces with dynamics       |        |
 
 ## Significance and analysis
 

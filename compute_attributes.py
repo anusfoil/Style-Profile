@@ -11,6 +11,7 @@ from utils import *
 
 ATTRIBUTES = ["sp_async_delta", "sp_async_cor_onset", "sp_async_cor_vel",
                 "sp_articulation_ratio",
+                "sp_tempo_std",
                 "sp_dynamics_agreement", "sp_dynamics_consistency_std"
                 ]
 
@@ -31,8 +32,8 @@ def compute_all_attributes(rerun=False):
             onset_groups = get_async_groups(match)
             result = async_attributes(onset_groups, match)
 
-            match_with_tempo = calculate_tempo(match)
-            result.update(articulation_attributes(match_with_tempo))
+            # match_with_tempo = calculate_tempo(match)
+            result.update(articulation_attributes(match))
 
             result.update(dynamics_attributes(match))
             for k, v in result.items():
