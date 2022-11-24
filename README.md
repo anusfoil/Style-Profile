@@ -30,7 +30,8 @@ An analysis workflow is as follows:
 ```sp_dynamics_consistency_std```: 
 
 #### Phrasing 
-```sp_rubato_```
+```sp_phrasing_rubato_w```
+```sp_phrasing_rubato_q```
 
 #### Textural 
 
@@ -38,15 +39,16 @@ An analysis workflow is as follows:
 
 #### Issues & Losses 
 
-There are numerous 
+There 
 
 |  |  |
 | ----------- | ----------- |
-| #. pieces with xml score      |        |
-| #. pieces aligned             |  2730  |
-| #. valid alignment            |    |
+| #. total pieces                           |  11672 |
+| #. pieces with xml score                  |  6838  |
+| #. pieces aligned                         |  4138  |
+| #. valid alignment (<50% err)             |  3752  |
 | #. pieces with scores parsed by partitura |        |
-| #. pieces with dynamics       |        |
+| #. pieces with dynamics marking           |  3434  |
 
 ## Significance and analysis
 

@@ -16,12 +16,12 @@ def get_measure(note_ID):
     except:
         return -1
 
-def parse_match(match_file, use_txt=False):
+def parse_match(match_file, check_validity=False):
     """returns: pandas dataframe with matched notes information
     Note: the missing notes and extra notes are not included. 
     """
 
-    if (not use_txt) and (match_file[-4:] == ".csv"):
+    if (match_file[-4:] == ".csv"):
         return pd.read_csv(match_file)
 
     columns = ["ID", "onset_time", "offset_time", "spelled_pitch", "onset_velocity", 
@@ -42,7 +42,9 @@ def parse_match(match_file, use_txt=False):
         """TODO: check validity of the match"""
         # large trunck of extra notes: might be repeat
 
-        match = match[match['error_index'] == 0]
+        if check_validity:
+            error_note = match[match['error_index'] != 0]
+            return len(error_note) < 0.5 * len(match)
 
         """normalize score time by ticks per quarter note"""
         TPQN = int(re.search(r"\d+", lines[4]).group(0))
@@ -51,6 +53,7 @@ def parse_match(match_file, use_txt=False):
 
         """parse measures from the note id information """
         match['measure'] = match['note_ID'].apply(get_measure)
+    
     return match
 
 def align_perf_score(perf, score, score_format="musicxml", use_matched=True):
@@ -118,7 +121,7 @@ def parse_score_markings(match, score):
         
         if dm_text in ["crescendo", "diminuendo"]:
             match.at[match_idx, 'dynamics_marking'] = dm_text + "_start"
-            end_position = (match['score_time']-dm_end).abs().argsort()[0] # find the closest ending position
+            end_position = (match['score_time']-dm_end).abs().argsort().iloc[0] # find the closest ending position
             match.at[end_position, 'dynamics_marking'] = dm_text + "_end"
         else:
             match.at[match_idx, 'dynamics_marking'] = dm_text
@@ -155,8 +158,8 @@ def update_match_with_score_features():
     all_match_files = glob.glob(f"{DATA_DIR}/**/*_match.txt", recursive=True)
 
     for idx, match_file in tqdm(enumerate(all_match_files)):
-        # if not "02195" in match_file:
-        #     continue
+        if os.path.exists(match_file[:-4] + ".csv"):
+            continue
         match = parse_match(match_file)
         score_for_match = glob.glob(f"{match_file[:-15]}/*xml", recursive=True)
         match_with_marking = parse_score_markings(match, score_for_match[0]) # dynamics 
@@ -197,8 +200,15 @@ def generate_alignments():
             print("score doesn't exist! " + score)
             continue
 
-def filter_unmatched():
-    """filter out the pieces that"""
+
+def stats():
+    """compute the stats
+        - pieces with xml score  
+        - pieces aligned 
+        - valid alignment
+        - pieces with scores parsed by partitura 
+        - pieces with dynamics 
+    """
     meta_csv = pd.read_csv(DATA_CSV)
 
     data_with_score = meta_csv[~meta_csv["score_path"].isna()]
@@ -206,25 +216,24 @@ def filter_unmatched():
     score_list = data_with_score["score_path"].tolist()
 
     # hook()
-    mxl_count, mxl_unmatched_count = 0, 0
-    musicxml_count, musicxml_unmatched_count = 0, 0
+    data_aligend_count, aligned_valid_count, with_dynamics_count = 0, 0, 0
     for perf, score in tqdm(zip(midi_list, score_list)):
         perf = DATA_DIR + perf[:-4]
         score = DATA_DIR + ".".join(score.split(".")[:-1])
 
-        if os.path.exists(score + ".mxl"):
-            mxl_count += 1
-            if (not os.path.exists(perf + "_match.txt")):
-                mxl_unmatched_count += 1
 
-        if os.path.exists(score + ".musicxml"):
-            musicxml_count += 1
-            if (not os.path.exists(perf + "_match.txt")):
-                musicxml_unmatched_count += 1
-
-    print(f"{mxl_unmatched_count}/{mxl_count}")
-    print(f"{musicxml_unmatched_count}/{musicxml_count}")
-    print(f"{(musicxml_unmatched_count+mxl_unmatched_count)}/{(mxl_count+musicxml_count)}")
+        if os.path.exists(perf + "_match.txt"):
+            data_aligend_count += 1
+            aligned_valid_count += parse_match(perf + "_match.txt", check_validity=True)
+            
+            match = parse_match(perf + "_match.csv")
+            with_dynamics_count += ~match['dynamics_marking'].isna().all()
+    
+    print(f"Total data: {len(meta_csv)}")
+    print(f"Data with score: {len(data_with_score)}")
+    print(f"Data aligned: {data_aligend_count}")
+    print(f"Data valid alignment: {aligned_valid_count}")
+    print(f"Data with dynamics: {with_dynamics_count}")
 
 
 def remove_all_matched():
@@ -298,14 +307,17 @@ def match_preludes():
     meta_csv.to_csv("ATEPP-metadata-1.2.csv", index=False)
     return
 
+
+
+
 if __name__ == "__main__":
     # remove_all_matched()
     # generate_alignments()
-    # filter_unmatched()
     # link_score_to_metadata()
     # match_preludes()
 
     # match = parse_match("../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/05511_match.txt")
     # parse_score_markings(match, "../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/score.xml")
-    update_match_with_score_features()
+    # update_match_with_score_features()
+    stats()
     pass
