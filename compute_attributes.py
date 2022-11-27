@@ -27,17 +27,20 @@ def compute_all_attributes(rerun=False):
         meta_attributes[attribute] = np.nan
     for idx, row in tqdm(meta_attributes.iterrows()):
         match_file = f"{DATA_DIR}/{row['midi_path'][:-4]}_match.csv"
+        if ("Barcarolle_Op._60" in match_file) or ("Barcarolle_in_F-Sharp_Major,_Op._60" in match_file):
+            continue
         if os.path.exists(match_file):
             match = parse_match(match_file)
-            onset_groups = get_async_groups(match)
-            result = async_attributes(onset_groups, match)
+            if match is not None:
+                onset_groups = get_async_groups(match)
+                result = async_attributes(onset_groups, match)
 
-            # match_with_tempo = calculate_tempo(match)
-            result.update(articulation_attributes(match))
+                # match_with_tempo = calculate_tempo(match)
+                result.update(articulation_attributes(match))
 
-            result.update(dynamics_attributes(match))
-            for k, v in result.items():
-                meta_attributes.at[idx, k] = v
+                result.update(dynamics_attributes(match))
+                for k, v in result.items():
+                    meta_attributes.at[idx, k] = v
     
     meta_attributes.to_csv("attributes.csv")
     return meta_attributes

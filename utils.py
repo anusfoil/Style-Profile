@@ -16,44 +16,44 @@ def get_measure(note_ID):
     except:
         return -1
 
-def parse_match(match_file, check_validity=False):
+def parse_match(match_file):
     """returns: pandas dataframe with matched notes information
     Note: the missing notes and extra notes are not included. 
     """
 
     if (match_file[-4:] == ".csv"):
-        return pd.read_csv(match_file)
+        match = pd.read_csv(match_file)
 
-    columns = ["ID", "onset_time", "offset_time", "spelled_pitch", "onset_velocity", 
-        "offset_velocity", "channel", "match_status", "score_time", "score_dur", "voice", 
-        "note_ID", "error_index", "skip_index"]
+    else:
+        columns = ["ID", "onset_time", "offset_time", "spelled_pitch", "onset_velocity", 
+            "offset_velocity", "channel", "match_status", "score_time", "score_dur", "voice", 
+            "note_ID", "error_index", "skip_index"]
+        with open(match_file, "r") as f:
+            lines = f.readlines()
+            match = [line.split() for line in lines if line[:2] != "//"]
+            match = pd.DataFrame(match)
+            match.columns = columns
 
-    with open(match_file, "r") as f:
-        
-        lines = f.readlines()
-        match = [line.split() for line in lines if line[:2] != "//"]
-        match = pd.DataFrame(match)
-        match.columns = columns
+            match.onset_time = match.onset_time.astype(float)
+            match.offset_time = match.offset_time.astype(float)
+            match.error_index = match.error_index.astype(int)
 
-        match.onset_time = match.onset_time.astype(float)
-        match.offset_time = match.offset_time.astype(float)
-        match.error_index = match.error_index.astype(int)
+            """normalize score time by ticks per quarter note"""
+            TPQN = int(re.search(r"\d+", lines[4]).group(0))
+            match.score_time = match.score_time.astype(float) / TPQN
+            match.score_dur = match.score_dur.astype(float) / TPQN	
 
-        """TODO: check validity of the match"""
-        # large trunck of extra notes: might be repeat
-
-        if check_validity:
-            error_note = match[match['error_index'] != 0]
-            return len(error_note) < 0.5 * len(match)
-
-        """normalize score time by ticks per quarter note"""
-        TPQN = int(re.search(r"\d+", lines[4]).group(0))
-        match.score_time = match.score_time.astype(float) / TPQN
-        match.score_dur = match.score_dur.astype(float) / TPQN	
-
-        """parse measures from the note id information """
-        match['measure'] = match['note_ID'].apply(get_measure)
+            """parse measures from the note id information """
+            match['measure'] = match['note_ID'].apply(get_measure)
     
+    """TODO: check validity of the match"""
+    # large trunck of extra notes: might be repeat
+    # '../Datasets/ATEPP-1.1//Frederic_Chopin/Barcarolle_Op._60/11206_match.csv' has a weird three-note-match, seems like from an issue with the score.
+
+    error_note = match[match['error_index'] != 0]
+    if len(error_note) > 0.5 * len(match):
+        return None
+
     return match
 
 def align_perf_score(perf, score, score_format="musicxml", use_matched=True):
@@ -158,7 +158,7 @@ def update_match_with_score_features():
     all_match_files = glob.glob(f"{DATA_DIR}/**/*_match.txt", recursive=True)
 
     for idx, match_file in tqdm(enumerate(all_match_files)):
-        if os.path.exists(match_file[:-4] + ".csv"):
+        if idx < 4108:
             continue
         match = parse_match(match_file)
         score_for_match = glob.glob(f"{match_file[:-15]}/*xml", recursive=True)
@@ -201,7 +201,7 @@ def generate_alignments():
             continue
 
 
-def stats():
+def data_stats():
     """compute the stats
         - pieces with xml score  
         - pieces aligned 
@@ -224,7 +224,7 @@ def stats():
 
         if os.path.exists(perf + "_match.txt"):
             data_aligend_count += 1
-            aligned_valid_count += parse_match(perf + "_match.txt", check_validity=True)
+            aligned_valid_count += (type(parse_match(perf + "_match.txt")) != None)
             
             match = parse_match(perf + "_match.csv")
             with_dynamics_count += ~match['dynamics_marking'].isna().all()
@@ -317,7 +317,8 @@ if __name__ == "__main__":
     # match_preludes()
 
     # match = parse_match("../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/05511_match.txt")
+    match = parse_match('../Datasets/ATEPP-1.1//Franz_Schubert/Piano_Sonata_No.13_in_A,_D.664/3._Allegro/03975_match.csv')
     # parse_score_markings(match, "../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/score.xml")
     # update_match_with_score_features()
-    stats()
+    # data_stats()
     pass

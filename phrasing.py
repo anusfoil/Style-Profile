@@ -3,7 +3,9 @@ from scipy.optimize import least_squares
 from utils import *
 
 
-def phrase_segmentation():
+def phrase_end(match):
+    """input a match file, output the tempo in the final measures of the phrase """
+    
     return 
 
 
@@ -19,6 +21,8 @@ def phrasing_attributes(match):
         w: the final tempo (normalized between 0 and 1, assuming)
         q: variation in curvature
     """
+
+
     xdata = np.linspace(0, 1, 6)
     # ydata = np.array([42.99, 41.81, 42, 43.22, 41.92, 39.28, 41.5])
     ydata = np.array([42.99, 42.81, 42.4, 41.92, 39.68, 38.5])
