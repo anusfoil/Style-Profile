@@ -11,7 +11,7 @@ from utils import *
 
 ATTRIBUTES = ["sp_async_delta", "sp_async_cor_onset", "sp_async_cor_vel",
                 "sp_articulation_ratio",
-                "sp_tempo_std",
+                # "sp_tempo_std",
                 "sp_dynamics_agreement", "sp_dynamics_consistency_std"
                 ]
 
@@ -42,7 +42,7 @@ def compute_all_attributes(rerun=False):
                 for k, v in result.items():
                     meta_attributes.at[idx, k] = v
     
-    meta_attributes.to_csv("attributes.csv")
+    meta_attributes.to_csv("attributes.csv", index=False)
     return meta_attributes
 
 
