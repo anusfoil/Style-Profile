@@ -1,3 +1,4 @@
+import numpy as np
 from utils import parse_match
 import matplotlib.pyplot as plt
 
@@ -8,16 +9,25 @@ def tempo_attributes(match):
             "st_tempo_std": match['tempo'].std()
         }
 
-def plot_tempo(match):
-    plt.step(match['score_time'], match['tempo'])
+def plot_tempo(match, smoothing_window=0):
+
+    tempo = match['tempo']
+    if smoothing_window:
+        kernel = np.ones(smoothing_window) / smoothing_window
+        tempo = np.convolve(tempo, kernel, mode='same')
+
+    plt.step(match['score_time'], tempo)
     plt.grid()
+    plt.xlabel("beats")
+    plt.ylabel("bpm")
+    plt.title(f"Tempo curve with smoothing window {smoothing_window}")
     plt.show()
     return 
 
 if __name__ == "__main__":
 
     # this contains repeats (in perf but not in score).
-    match = parse_match("../Datasets/ATEPP-1.1/Johann_Sebastian_Bach/Das_Wohltemperierte_Klavier_Book2/Book_2,_BWV_870-893:_Prelude_in_A_minor_BWV_889/02966_match.txt")
+    match = parse_match("../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No.13_in_B_flat,_K.333/1._Allegro/05311_match.txt")
     match = calculate_tempo(match)
-    hook()
+    match.to_csv("../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No.13_in_B_flat,_K.333/1._Allegro/05311_match.csv")
     # plot_tempo(match)

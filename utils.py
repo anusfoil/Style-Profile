@@ -9,6 +9,10 @@ import hook
 DATA_CSV = "../Datasets/ATEPP-1.1/ATEPP-metadata-1.2.csv"
 DATA_DIR = "../Datasets/ATEPP-1.1/"
 
+###################################
+### MATCH AND ALIGNMENTS
+###################################
+
 def get_measure(note_ID):
     note_info = note_ID.split("-")
     try:
@@ -48,13 +52,14 @@ def parse_match(match_file):
     
     """TODO: check validity of the match"""
     # large trunck of extra notes: might be repeat
-    # '../Datasets/ATEPP-1.1//Frederic_Chopin/Barcarolle_Op._60/11206_match.csv' has a weird three-note-match, seems like from an issue with the score.
 
     error_note = match[match['error_index'] != 0]
     if len(error_note) > 0.5 * len(match):
+        print("match not valid; to much error notes!")
+        # 
         return None
 
-    return match
+    return match[match['error_index'] == 0] 
 
 def align_perf_score(perf, score, score_format="musicxml", use_matched=True):
     """using eita's alignment algorithm, save "_match.txt" files in dataset. Only run once
@@ -97,6 +102,40 @@ def align_perf_score(perf, score, score_format="musicxml", use_matched=True):
 
     return f"{perf}_match.txt"
 
+def generate_alignments():
+    """generate _match.txt files for each performance-score pair, under the same directory. """
+    meta_csv = pd.read_csv(DATA_CSV)
+
+    data_with_score = meta_csv[~meta_csv["score_path"].isna()]
+    midi_list = data_with_score["midi_path"].tolist()
+    score_list = data_with_score["score_path"].tolist()
+
+    for perf, score in tqdm(zip(midi_list, score_list)):
+        if "K.333/3._Allegretto_grazioso" not in perf:
+            continue
+        """remove extension"""
+        perf = DATA_DIR + perf[:-4]
+        score = DATA_DIR + ".".join(score.split(".")[:-1])
+
+        score_dir = "/".join(score.split("/")[:-1])
+        if os.path.exists(score + ".mxl"):
+            # unzip the mxl file
+            os.system(f"unzip -o {score}.mxl -d {score_dir}")
+            # hook()
+
+        xml_dir = glob.glob(score_dir + "/*.xml")
+        if os.path.exists(score + ".musicxml"):
+            align_perf_score(perf, score, score_format="musicxml", use_matched=True)
+        elif xml_dir:
+            align_perf_score(perf, xml_dir[0][:-4], score_format="xml", use_matched=True)
+        else:
+            print("score doesn't exist! " + score)
+            continue
+
+###################################
+### SCORE FEATURES AND TEMPO
+###################################
+
 
 def parse_score_markings(match, score):
     """parse the score using partitura package, link the score attributes with the note-match list """
@@ -129,76 +168,55 @@ def parse_score_markings(match, score):
     return match
 
 
-def calculate_tempo(match, level='ibi'):
-    """plot tempo on beat or measure level"""
-    match_beats = match[match['score_time'].apply(float.is_integer)]  # select the ones on the beat
-    match_beats = match[match['error_index'] == 0] # not including extra notes 
+def calculate_tempo(match):
+    """returns tempo on event level
+    NOTE: on the event level, there would be a lot of noise and fluctuations. 
+    """
 
-    beat_onsets = match_beats.groupby("score_time").min()
-    # interpolate the missing beats (beats without note event)
-    beat_onsets = beat_onsets.reindex(range(0, int(beat_onsets.index.max())+1))
-    beat_onsets = beat_onsets.interpolate()['onset_time']
+    score_time_shift = np.concatenate((np.array([0.0]), match['score_time'][:-1].to_numpy()))
+    score_time_diff = match['score_time'].to_numpy() - score_time_shift
 
-    # set the IBI to original data
-    match = match.set_index('score_time', drop=False)
-    match['ibi'] = beat_onsets - beat_onsets.shift(1)
-    match = match.set_index('ID', drop=False)
-    # calculate the local tempo using ibi
+    onset_time_shift = np.concatenate((np.array([0.0]), match['onset_time'][:-1].to_numpy()))
+    onset_time_diff = match['onset_time'].to_numpy() - onset_time_shift
+
+    match['ibi'] = onset_time_diff / score_time_diff
+    match['ibi'].replace([np.inf, -np.inf], np.nan, inplace=True)
+    match.loc[match['ibi'] < 0.1, 'ibi'] = np.nan # remove abnormal values 
     match['tempo'] = 60 / match['ibi'] 
+    match['tempo'].replace([np.inf, -np.inf], np.nan, inplace=True)
 
     return match.round(6)
 
+
 def update_match_with_score_features():
-    """updated information: 
-        ibi: inter-beat-interval, annotated for on-beat events. For other events  
+    """ For general information like tempo or markings from score,  we pre-compute them and update on the match file to save as csv.
+    note: only valid match will have CSV saved. 
+
+    updated information: 
+        ibi: annotated in an on-event basis  
         tempo: in beats-per-minute
-        dynamics: marking on the event 
+        dynamics: marking on the event.  
 
     """
     all_match_files = glob.glob(f"{DATA_DIR}/**/*_match.txt", recursive=True)
 
     for idx, match_file in tqdm(enumerate(all_match_files)):
-        if idx < 4108:
-            continue
         match = parse_match(match_file)
-        score_for_match = glob.glob(f"{match_file[:-15]}/*xml", recursive=True)
-        match_with_marking = parse_score_markings(match, score_for_match[0]) # dynamics 
 
-        match_marking_tempo = calculate_tempo(match_with_marking) # ibi, imi and tempo
+        if match:
+            score_for_match = glob.glob(f"{match_file[:-15]}/*xml", recursive=True)
+            match_with_marking = parse_score_markings(match, score_for_match[0]) # dynamics 
 
-        match_marking_tempo.to_csv(match_file[:-4] + ".csv")
+            match_marking_tempo = calculate_tempo(match_with_marking) 
+
+            match_marking_tempo.to_csv(match_file[:-4] + ".csv")
 
     return 
 
-def generate_alignments():
-    """generate _match.txt files for each performance-score pair, under the same directory. """
-    meta_csv = pd.read_csv(DATA_CSV)
 
-    data_with_score = meta_csv[~meta_csv["score_path"].isna()]
-    midi_list = data_with_score["midi_path"].tolist()
-    score_list = data_with_score["score_path"].tolist()
-
-    for perf, score in tqdm(zip(midi_list, score_list)):
-        if "24_Preludes,_Op._28" not in perf:
-            continue
-        """remove extension"""
-        perf = DATA_DIR + perf[:-4]
-        score = DATA_DIR + ".".join(score.split(".")[:-1])
-
-        score_dir = "/".join(score.split("/")[:-1])
-        if os.path.exists(score + ".mxl"):
-            # unzip the mxl file
-            os.system(f"unzip -o {score}.mxl -d {score_dir}")
-            # hook()
-
-        xml_dir = glob.glob(score_dir + "/*.xml")
-        if os.path.exists(score + ".musicxml"):
-            align_perf_score(perf, score, score_format="musicxml", use_matched=True)
-        elif xml_dir:
-            align_perf_score(perf, xml_dir[0][:-4], score_format="xml", use_matched=True)
-        else:
-            print("score doesn't exist! " + score)
-            continue
+###################################
+### DATA CLEANING AND STATISTICS
+###################################
 
 
 def data_stats():
@@ -312,12 +330,12 @@ def match_preludes():
 
 if __name__ == "__main__":
     # remove_all_matched()
-    # generate_alignments()
+    generate_alignments()
     # link_score_to_metadata()
     # match_preludes()
 
     # match = parse_match("../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/05511_match.txt")
-    match = parse_match('../Datasets/ATEPP-1.1//Franz_Schubert/Piano_Sonata_No.13_in_A,_D.664/3._Allegro/03975_match.csv')
+    # match = parse_match('../Datasets/ATEPP-1.1//Franz_Schubert/Piano_Sonata_No.13_in_A,_D.664/3._Allegro/03975_match.csv')
     # parse_score_markings(match, "../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/score.xml")
     # update_match_with_score_features()
     # data_stats()
