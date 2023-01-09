@@ -136,14 +136,11 @@ def generate_alignments():
 ### SCORE FEATURES AND TEMPO
 ###################################
 
+def get_score_offsets(match):
+    match['score_offset'] = match['score_time'] + match['score_dur']
+    return match
 
-def parse_score_markings(match, score):
-    """parse the score using partitura package, link the score attributes with the note-match list """
-    match['dynamics_marking'] = ""
-    try:
-        sc = pt.load_score_as_part(score)
-    except:
-        return match
+def parse_dynamic_markings(match, sc):
 
     if not sc.dynamics:
         return match
@@ -164,6 +161,34 @@ def parse_score_markings(match, score):
             match.at[end_position, 'dynamics_marking'] = dm_text + "_end"
         else:
             match.at[match_idx, 'dynamics_marking'] = dm_text
+
+    return match
+
+def parse_articulation_markings(match, sc):
+
+    match['articulation_marking'] = ""
+    # add articulation to the match file
+    TPQN = sc.notes[0].start.quarter
+    for note in sc.notes:
+        if note.articulations:
+            note_pitch = "{}{}{}".format(note.step, note.alter_sign, note.octave)
+            found_note = match[(match['score_time'] == (note.start.t / TPQN)) & (match['spelled_pitch'] == note_pitch)]
+            if len(found_note):
+                match.at[found_note.index, "articulation_marking"] = note.articulations[0]
+
+    # TODO: parse legato slurs 
+
+    return match
+
+def parse_score_markings(match, score):
+    """parse the score using partitura package, link the score attributes with the note-match list """
+    try:
+        sc = pt.load_score_as_part(score)
+    except:
+        return match
+
+    match = parse_dynamic_markings(match, sc)
+    match = parse_articulation_markings(match, sc)
 
     return match
 
@@ -193,19 +218,26 @@ def update_match_with_score_features():
     note: only valid match will have CSV saved. 
 
     updated information: 
+        offset: score offset = score_start + score_dur
         ibi: annotated in an on-event basis  
         tempo: in beats-per-minute
         dynamics: marking on the event.  
+        articulation: marking on the event.
 
     """
     all_match_files = glob.glob(f"{DATA_DIR}/**/*_match.txt", recursive=True)
 
     for idx, match_file in tqdm(enumerate(all_match_files)):
+        # if idx < 3086:
+        #     continue
         match = parse_match(match_file)
 
-        if match:
+        if type(match) == pd.DataFrame:
             score_for_match = glob.glob(f"{match_file[:-15]}/*xml", recursive=True)
-            match_with_marking = parse_score_markings(match, score_for_match[0]) # dynamics 
+
+            match_with_offset = get_score_offsets(match)
+
+            match_with_marking = parse_score_markings(match_with_offset, score_for_match[0]) # dynamics 
 
             match_marking_tempo = calculate_tempo(match_with_marking) 
 
@@ -330,13 +362,13 @@ def match_preludes():
 
 if __name__ == "__main__":
     # remove_all_matched()
-    generate_alignments()
+    # generate_alignments()
     # link_score_to_metadata()
     # match_preludes()
 
-    # match = parse_match("../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/05511_match.txt")
+    # match = parse_match("../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/05511_match.csv")
     # match = parse_match('../Datasets/ATEPP-1.1//Franz_Schubert/Piano_Sonata_No.13_in_A,_D.664/3._Allegro/03975_match.csv')
     # parse_score_markings(match, "../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/score.xml")
-    # update_match_with_score_features()
+    update_match_with_score_features()
     # data_stats()
     pass

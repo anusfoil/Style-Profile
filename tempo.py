@@ -27,7 +27,7 @@ def plot_tempo(match, smoothing_window=0):
 if __name__ == "__main__":
 
     # this contains repeats (in perf but not in score).
-    match = parse_match("../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No.13_in_B_flat,_K.333/1._Allegro/05311_match.txt")
+    match = parse_match("../Datasets/ATEPP-1.1//Franz_Schubert/Piano_Sonata_No.17_in_D,_D.850/1._Allegro_vivace/04150_match.txt")
     match = calculate_tempo(match)
-    match.to_csv("../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No.13_in_B_flat,_K.333/1._Allegro/05311_match.csv")
-    # plot_tempo(match)
+    # match.to_csv("../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No.13_in_B_flat,_K.333/1._Allegro/05311_match.csv")
+    plot_tempo(match)

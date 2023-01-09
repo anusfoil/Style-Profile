@@ -7,12 +7,14 @@ from asynchrony import *
 from tempo import *
 from articulation import *
 from dynamics import *
+from phrasing import *
 from utils import * 
 
 ATTRIBUTES = ["sp_async_delta", "sp_async_cor_onset", "sp_async_cor_vel",
-                "sp_articulation_ratio",
+                "sp_duration_percentage",
                 "sp_tempo_std",
-                "sp_dynamics_agreement", "sp_dynamics_consistency_std"
+                "sp_dynamics_agreement", "sp_dynamics_consistency_std",
+                "sp_phrasing_w", "sp_phrasing_q"
                 ]
 
 def compute_all_attributes(rerun=False):
@@ -27,8 +29,8 @@ def compute_all_attributes(rerun=False):
         meta_attributes[attribute] = np.nan
     for idx, row in tqdm(meta_attributes.iterrows()):
         match_file = f"{DATA_DIR}/{row['midi_path'][:-4]}_match.csv"
-        # if ("Barcarolle_Op._60" in match_file) or ("Barcarolle_in_F-Sharp_Major,_Op._60" in match_file):
-        #     continue
+        if ("Barcarolle_Op._60" in match_file) or ("Barcarolle_in_F-Sharp_Major,_Op._60" in match_file):
+            continue
         if os.path.exists(match_file):
             match = parse_match(match_file)
             if match is not None:
@@ -44,6 +46,10 @@ def compute_all_attributes(rerun=False):
 
                 """dynamics_attributes"""
                 result.update(dynamics_attributes(match))
+
+                """phrasing_attributes"""
+                result.update(phrasing_attributes(match))
+
                 for k, v in result.items():
                     meta_attributes.at[idx, k] = v
     

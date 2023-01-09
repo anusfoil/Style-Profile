@@ -13,7 +13,8 @@ def freiberg_kinematic(params, xdata, ydata):
     w, q = params
     return ydata - (1 + (w ** q - 1) * xdata) ** (1/q)
 
-def phrasing_attributes(match):
+
+def phrasing_attributes(match, plot=False):
     """
     rubato:
         Model the final tempo curve (last 2 measures) using Friberg & Sundberg’s kinematic model: (https://www.researchgate.net/publication/220723460_Evidence_for_Pianist-specific_Rubato_Style_in_Chopin_Nocturnes)
@@ -23,15 +24,16 @@ def phrasing_attributes(match):
     """
 
     # last 4 beats
-    final_beat = match['score_time'].max()
-    cadence = match[match['score_time'] >= final_beat - 4]
+    final_beat = match['score_time'].iloc[-1]
+    cadence = match.iloc[-40:][(match['score_time'] >= final_beat - 4) & (match['score_time'] <= final_beat) ]
     cadence = cadence[~cadence['tempo'].isnull()]
     xdata, ydata = cadence['score_time'], cadence['tempo']
 
-    # xdata = np.linspace(0, 1, 7)
-    # # ydata = np.array([42.99, 41.81, 42, 43.22, 41.92, 39.28, 41.5])
-    # ydata = np.array([123.87, 102.4, 60.47, 76.04, 59.08, 66.78, 36.31])
-
+    if len(cadence) <= 3 or (xdata.max() == xdata.min()): # not enough events to calculate rubato curve
+        return {
+            "sp_phrasing_rubato_w": np.nan,
+            "sp_phrasing_rubato_q": np.nan,
+        }        
 
     # normalize x and y. y: initial tempo as 1
     xdata = (xdata - xdata.min()) * (1 / (xdata.max() - xdata.min()))
@@ -42,12 +44,13 @@ def phrasing_attributes(match):
     
     w, q = res.x
 
-    plt.scatter(xdata, ydata, marker="+", c="red")
-    xline = np.linspace(0, 1, 100)
-    plt.plot(xline, (1 + (w ** q - 1) * xline) ** (1/q))
-    plt.ylim(0, 1.2)
-    plt.title(f"Friberg & Sundberg kinematic rubato curve with w={round(w, 2)} and q={round(q, 2)}")
-    plt.show()
+    if plot:
+        plt.scatter(xdata, ydata, marker="+", c="red")
+        xline = np.linspace(0, 1, 100)
+        plt.plot(xline, (1 + (w ** q - 1) * xline) ** (1/q))
+        plt.ylim(0, 1.2)
+        plt.title(f"Friberg & Sundberg kinematic rubato curve with w={round(w, 2)} and q={round(q, 2)}")
+        plt.show()
 
     return {
         "sp_phrasing_rubato_w": w,
