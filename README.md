@@ -20,7 +20,15 @@ For each piece, all same-onset group with more than 3 events are considered, and
 
 
 ### Articulation
-```sp_articulation_ratio```: We simplfily the notion of articulation into the amount of indicated duration being performed. 
+```sp_duration_percentage```: The amount of indicated duration being performed. 
+
+```sp_key_overlap_ratio```: The Key Overlap Ratio (KOR), referenced from [this work](https://www.researchgate.net/publication/233013901_Articulation_Strategies_in_Expressive_Piano_Performance_Analysis_of_Legato_Staccato_and_Repeated_Notes_in_Performances_of_the_Andante_Movement_of_Mozart's_Sonata_in_G_Major_K_545), is defined as the ratio between key overlap time and inter onset interval. 
+
+```sp_kor_legato```: The KOR for all notes with legato marking. Averaged across all voices. 
+
+```sp_kor_staccato```: The KOR for all notes with staccato marking. Averaged across all voices. 
+
+```sp_kor_repeated_notes```: The KOR for all repeated notes that's not the last one in the sequence. Averaged across all voices. 
 
 
 ### Tempo 
