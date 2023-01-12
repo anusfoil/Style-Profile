@@ -2,8 +2,41 @@
 
 Expression Style Profile (ESP) is a set of extracted attributes from symbolic piano performance files. From an alignment with the score, the attributes analyzes expressive details from hands asynchrony to rubato patterns. All attributes are in piece-level. 
 
+Usage:
+```
+from ESP import ExpressionStyleProfile
+
+esp = ExpressionStyleProfile("examples/mozart_match.csv", "examples/mozart.xml")
+esp.get_attributes()
+print(esp)
+
+"""
+sp_async_delta: 0.0134
+sp_async_cor_onset: 0.443
+sp_async_cor_vel: 0.5233
+sp_async_parts: 0
+st_tempo_std: 27.6051
+sp_duration_percentage: 0.8588
+sp_key_overlap_ratio: -0.2018
+sp_kor_legato: -0.1129
+sp_kor_staccato: -0.6401
+sp_kor_repeated: -0.6079
+sp_dynamics_agreement: 1.0
+sp_dynamics_consistency_std: 11.1639
+sp_phrasing_rubato_w: 0.5803
+sp_phrasing_rubato_q: 5.1833
+"""
+
+```
+
+#### Aligned match file
+
+
+
 An analysis workflow is as follows: 
 ![workflow](docs/workflow.png)
+
+
 
 ## Expression categories 
 
@@ -55,9 +88,9 @@ Rubato w and q: inspired from [this paper](https://www.researchgate.net/publicat
 
 ### Textural 
 
-## Stats on ATEPP dataset
+## Stats
 
-#### Issues & Losses 
+#### ATEPP 
 
 |  |  |
 | ----------- | ----------- |
@@ -69,16 +102,29 @@ Rubato w and q: inspired from [this paper](https://www.researchgate.net/publicat
 | #. pieces with dynamics marking           |  3434  |
 | #. pieces with all attributes computed    |  1201  |
 
+#### ASAP
+
+|  |  |
+| ----------- | ----------- |
+| #. total pieces                           |   |
+| #. pieces with xml score                  |    |
+| #. pieces aligned                         |    |
+| #. valid alignment (<50% err)             |    |
+| #. pieces with scores parsed by partitura |        |
+| #. pieces with dynamics marking           |    |
+| #. pieces with all attributes computed    |    |
+
+
 ## Significance and analysis
 
-#### Performer significance: One-way ANOVA
+#### ATEPP: Performer significance: One-way ANOVA
 |  ```sp_asynchrony_delta```| ```sp_asynchrony_cor_pitch``` | ```sp_asynchrony_cor_vel``` | ```sp_articulation_ratio``` | ```sp_dynamics_agreement``` | ```sp_dynamics_consistency_std```
 | ----------- | ----------- | ----------- | ----------- | ----------- | ----------- |
 | 0.028   |  3e-10 | 4.39e-8 |  | 0.401 | 0.0003 |  
 
 
 
-#### Classification F1: Perfomer vs Composer
+#### ATEPP: Classification F1: Perfomer vs Composer
 
 Data support: ~1200 (debugging nan values)
 

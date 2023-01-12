@@ -1,6 +1,6 @@
+import numpy as np
 from scipy.optimize import least_squares
 import matplotlib.pyplot as plt
-from utils import *
 
 
 def phrase_end(match):

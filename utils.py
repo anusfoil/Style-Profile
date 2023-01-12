@@ -6,7 +6,7 @@ import partitura as pt
 
 import hook
 
-DATA_CSV = "../Datasets/ATEPP-1.1/ATEPP-metadata-1.2.csv"
+DATA_CSV = "../Datasets/ATEPP-1.1/ATEPP-metadata-1.3.csv"
 DATA_DIR = "../Datasets/ATEPP-1.1/"
 
 ###################################
@@ -20,46 +20,6 @@ def get_measure(note_ID):
     except:
         return -1
 
-def parse_match(match_file):
-    """returns: pandas dataframe with matched notes information
-    Note: the missing notes and extra notes are not included. 
-    """
-
-    if (match_file[-4:] == ".csv"):
-        match = pd.read_csv(match_file)
-
-    else:
-        columns = ["ID", "onset_time", "offset_time", "spelled_pitch", "onset_velocity", 
-            "offset_velocity", "channel", "match_status", "score_time", "score_dur", "voice", 
-            "note_ID", "error_index", "skip_index"]
-        with open(match_file, "r") as f:
-            lines = f.readlines()
-            match = [line.split() for line in lines if line[:2] != "//"]
-            match = pd.DataFrame(match)
-            match.columns = columns
-
-            match.onset_time = match.onset_time.astype(float)
-            match.offset_time = match.offset_time.astype(float)
-            match.error_index = match.error_index.astype(int)
-
-            """normalize score time by ticks per quarter note"""
-            TPQN = int(re.search(r"\d+", lines[4]).group(0))
-            match.score_time = match.score_time.astype(float) / TPQN
-            match.score_dur = match.score_dur.astype(float) / TPQN	
-
-            """parse measures from the note id information """
-            match['measure'] = match['note_ID'].apply(get_measure)
-    
-    """TODO: check validity of the match"""
-    # large trunck of extra notes: might be repeat
-
-    error_note = match[match['error_index'] != 0]
-    if len(error_note) > 0.5 * len(match):
-        print("match not valid; to much error notes!")
-        # 
-        return None
-
-    return match[match['error_index'] == 0] 
 
 def align_perf_score(perf, score, score_format="musicxml", use_matched=True):
     """using eita's alignment algorithm, save "_match.txt" files in dataset. Only run once
@@ -136,8 +96,18 @@ def generate_alignments():
 ### SCORE FEATURES AND TEMPO
 ###################################
 
+def find_note_from_match(note, match):
+
+    TPQN = note.start.quarter
+    """given a note object from partitura score, find the corresponding """
+    note_pitch = "{}{}{}".format(note.step, note.alter_sign, note.octave)
+    found_note = match[(match['score_time'] == (note.start.t / TPQN)) & (match['spelled_pitch'] == note_pitch)]
+
+    return found_note
+
 def get_score_offsets(match):
-    match['score_offset'] = match['score_time'] + match['score_dur']
+    if 'score_offset' not in match:
+        match['score_offset'] = match['score_time'] + match['score_dur']
     return match
 
 def parse_dynamic_markings(match, sc):
@@ -165,18 +135,29 @@ def parse_dynamic_markings(match, sc):
     return match
 
 def parse_articulation_markings(match, sc):
-
+    legato_voice = []
     match['articulation_marking'] = ""
+
     # add articulation to the match file
-    TPQN = sc.notes[0].start.quarter
     for note in sc.notes:
         if note.articulations:
-            note_pitch = "{}{}{}".format(note.step, note.alter_sign, note.octave)
-            found_note = match[(match['score_time'] == (note.start.t / TPQN)) & (match['spelled_pitch'] == note_pitch)]
+            found_note = find_note_from_match(note, match)
             if len(found_note):
                 match.at[found_note.index, "articulation_marking"] = note.articulations[0]
 
-    # TODO: parse legato slurs 
+        if note.voice in legato_voice: 
+            found_note = find_note_from_match(note, match)
+            if len(found_note):
+                match.at[found_note.index, "articulation_marking"] = "legato"
+
+        if note.slur_starts: 
+            legato_voice.append(note.voice) # the successive notes in the same voice are covered by legato slur.          
+            found_note = find_note_from_match(note, match)
+            if len(found_note):
+                match.at[found_note.index, "articulation_marking"] = "legato"
+
+        if note.slur_stops:
+            legato_voice.remove(note.voice)
 
     return match
 
@@ -187,8 +168,10 @@ def parse_score_markings(match, score):
     except:
         return match
 
-    match = parse_dynamic_markings(match, sc)
-    match = parse_articulation_markings(match, sc)
+    if 'dynamics_marking' not in match:
+        match = parse_dynamic_markings(match, sc)
+    if 'articulation_marking' not in match:
+        match = parse_articulation_markings(match, sc)
 
     return match
 
@@ -198,22 +181,23 @@ def calculate_tempo(match):
     NOTE: on the event level, there would be a lot of noise and fluctuations. 
     """
 
-    score_time_shift = np.concatenate((np.array([0.0]), match['score_time'][:-1].to_numpy()))
-    score_time_diff = match['score_time'].to_numpy() - score_time_shift
+    if 'tempo' not in match:
+        score_time_shift = np.concatenate((np.array([0.0]), match['score_time'][:-1].to_numpy()))
+        score_time_diff = match['score_time'].to_numpy() - score_time_shift
 
-    onset_time_shift = np.concatenate((np.array([0.0]), match['onset_time'][:-1].to_numpy()))
-    onset_time_diff = match['onset_time'].to_numpy() - onset_time_shift
+        onset_time_shift = np.concatenate((np.array([0.0]), match['onset_time'][:-1].to_numpy()))
+        onset_time_diff = match['onset_time'].to_numpy() - onset_time_shift
 
-    match['ibi'] = onset_time_diff / score_time_diff
-    match['ibi'].replace([np.inf, -np.inf], np.nan, inplace=True)
-    match.loc[match['ibi'] < 0.1, 'ibi'] = np.nan # remove abnormal values 
-    match['tempo'] = 60 / match['ibi'] 
-    match['tempo'].replace([np.inf, -np.inf], np.nan, inplace=True)
+        match['ibi'] = onset_time_diff / score_time_diff
+        match['ibi'].replace([np.inf, -np.inf], np.nan, inplace=True)
+        match.loc[match['ibi'] < 0.1, 'ibi'] = np.nan # remove abnormal values 
+        match['tempo'] = 60 / match['ibi'] 
+        match['tempo'].replace([np.inf, -np.inf], np.nan, inplace=True)
 
     return match.round(6)
 
 
-def update_match_with_score_features():
+def update_all_match_with_score_features():
     """ For general information like tempo or markings from score,  we pre-compute them and update on the match file to save as csv.
     note: only valid match will have CSV saved. 
 
@@ -241,7 +225,7 @@ def update_match_with_score_features():
 
             match_marking_tempo = calculate_tempo(match_with_marking) 
 
-            match_marking_tempo.to_csv(match_file[:-4] + ".csv")
+            match_marking_tempo.to_csv(match_file[:-4] + ".csv", index=False)
 
     return 
 
@@ -310,6 +294,19 @@ def link_score_to_metadata():
     meta_csv.to_csv("ATEPP-metadata-1.2.csv", index=False)
     return 
 
+def link_csv_to_metadata():
+    # add the newly added scores into the metadata csv
+    meta_csv = pd.read_csv(DATA_CSV)
+    valid_match_csv = glob.glob(f"{DATA_DIR}/**/*_match.csv", recursive=True)
+
+    for match_file in valid_match_csv:
+        match_file_dir = match_file[22:-10]
+        meta_csv.at[meta_csv['midi_path'].str.contains(match_file_dir), 'valid_match'] = "/".join(match_file.split("/")[3:])
+
+    meta_csv.to_csv("ATEPP-metadata-1.3.csv", index=False)
+
+    return 
+
 
 def match_preludes():
     meta_csv = pd.read_csv(DATA_CSV)
@@ -363,12 +360,11 @@ def match_preludes():
 if __name__ == "__main__":
     # remove_all_matched()
     # generate_alignments()
-    # link_score_to_metadata()
     # match_preludes()
 
-    # match = parse_match("../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/05511_match.csv")
+    match = parse_match("../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/05512_match.csv")
     # match = parse_match('../Datasets/ATEPP-1.1//Franz_Schubert/Piano_Sonata_No.13_in_A,_D.664/3._Allegro/03975_match.csv')
-    # parse_score_markings(match, "../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/score.xml")
-    update_match_with_score_features()
+    parse_score_markings(match, "../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/score.xml")
+    # update_match_with_score_features()
     # data_stats()
     pass

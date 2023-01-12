@@ -1,6 +1,6 @@
 import numpy as np
-from utils import *
-from tempo import *
+# from ..utils import *
+# from .tempo import *
 
 def calculate_duration_percentage(match):
     """take the estimated tempo and find the expected duration of each note, 
@@ -18,7 +18,9 @@ def get_kor(e1, e2):
     kot = e1['offset_time'] - e2['onset_time']
     ioi = e2['onset_time'] - e1['onset_time']
 
-    return kot / ioi
+    kor = kot / ioi
+    
+    return kor if (kor <= 1 and kor >= -1) else np.nan
 
 def calculate_key_overlap_ratio(match):
     """
@@ -34,12 +36,17 @@ def calculate_key_overlap_ratio(match):
     match['score_offset'] = match['score_time'] + match['score_dur']
 
     match['key_overlap_ratio'] = np.nan
+    match['kor_legato'] = np.nan
+    match['kor_staccato'] = np.nan
+    match['kor_repeated'] = np.nan
 
     # consider the note transition by each voice
     for voice in match['voice'].unique():
         match_voiced = match[match['voice'] == voice]
-        for i, row in match_voiced.iterrows():
-            if i == len(match_voiced) - 1:
+        for i, (_, row) in enumerate(match_voiced.iterrows()):
+            # if i == 79:
+            #     hook()
+            if i >= len(match_voiced) - 1:
                 break
             nextrow = match_voiced.iloc[i + 1]
 
@@ -54,12 +61,14 @@ def calculate_key_overlap_ratio(match):
                 match.at[original_position, 'kor_repeated'] = get_kor(row, nextrow)                
 
             # KOR for legato notes
+            if row['articulation_marking'] == 'legato':
+                original_position = match[match['ID'] == row['ID']].index
+                match.at[original_position, 'kor_legato'] = get_kor(row, nextrow)                  
 
             # KOR for staccato notes
-            if row['articulation'] == 'staccato':
+            if row['articulation_marking'] == 'staccato':
                 original_position = match[match['ID'] == row['ID']].index
                 match.at[original_position, 'kor_staccato'] = get_kor(row, nextrow)                  
-
 
     return match
 
@@ -75,9 +84,9 @@ def articulation_attributes(match):
     return {
         "sp_duration_percentage": match[match['duration_percentage'] != np.inf]['duration_percentage'].mean(),
         "sp_key_overlap_ratio": match['key_overlap_ratio'].mean(),
-        # "sp_kor_legato": ,
+        "sp_kor_legato": match['kor_legato'].mean(),
         "sp_kor_staccato": match['kor_staccato'].mean(),
-        # "sp_kor_repeated": 
+        "sp_kor_repeated": match['kor_repeated'].mean()
     }
 
 if __name__ == "__main__":
