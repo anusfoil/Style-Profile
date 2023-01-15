@@ -1,8 +1,6 @@
-import os, copy
 import numpy as np
 import matplotlib.pyplot as plt
 
-from tqdm import tqdm
 from expressions.asynchrony import *
 from expressions.tempo import *
 from expressions.articulation import *
@@ -10,11 +8,11 @@ from expressions.dynamics import *
 from expressions.phrasing import *
 from utils import * 
 
-ATTRIBUTES = ["sp_async_delta", "sp_async_cor_onset", "sp_async_cor_vel",
-                "sp_duration_percentage", "sp_key_overlap_ratio", "sp_kor_repeated", "sp_kor_staccato", "sp_kor_legato"
+ATTRIBUTES = ["sp_async_delta", "sp_async_cor_onset", "sp_async_cor_vel",  "sp_async_cor_part",
+                "sp_duration_percentage", "sp_key_overlap_ratio", "sp_kor_repeated", "sp_kor_staccato", "sp_kor_legato",
                 "sp_tempo_std",
                 "sp_dynamics_agreement", "sp_dynamics_consistency_std",
-                "sp_phrasing_w", "sp_phrasing_q"
+                "sp_phrasing_rubato_w", "sp_phrasing_rubato_q"
                 ]
 
 
@@ -27,13 +25,19 @@ class ExpressionStyleProfile(object):
             self.match_file = match_file
             print("using provided match file")
         else: # generating match file
-            align_perf_score(self.perf_file, self.score_file)
-            self.match_file = self.perf_file[:-4] + "_match.csv"
+            self.match_file = self.perf_file[:-4] + "_match.txt"
+            if not os.path.exists(self.match_file):
+                print("aligning...")
+                align_perf_score(self.perf_file[:-4], self.score_file[:-4])
 
         print("parsing_match...")
         self.match = self.parse_match(self.match_file)
         self.match = self.validate_match(self.match)
-        self.match = self.parse_score_features_to_match(self.match)   
+        self.match = self.parse_score_features_to_match(self.match) 
+        if not match_file:
+            self.match_file = self.perf_file[:-4] + "_match.csv"
+            self.match.to_csv(self.match_file, index=False) 
+
 
         print("getting attributes...")
         self.attributes = self.get_attributes()
@@ -106,6 +110,7 @@ class ExpressionStyleProfile(object):
                 match.onset_time = match.onset_time.astype(float)
                 match.offset_time = match.offset_time.astype(float)
                 match.error_index = match.error_index.astype(int)
+                match.onset_velocity = match.onset_velocity.astype(int)
 
                 """normalize score time by ticks per quarter note"""
                 TPQN = int(re.search(r"\d+", lines[4]).group(0))
@@ -124,6 +129,9 @@ class ExpressionStyleProfile(object):
         if len(error_note) > 0.5 * len(match):
             print("match not valid; to much error notes!")
             return None
+
+        # get rid of the extra column in the front
+        match = match.loc[:, ~match.columns.str.contains('Unnamed')]
 
         return match[match['error_index'] == 0] 
 
@@ -146,44 +154,8 @@ class ExpressionStyleProfile(object):
 
         # if not yet, save the updated match file. (second half of expression for dealing with nan)
         if ((match_marking_tempo == match) | ((match_marking_tempo != match_marking_tempo) & (match != match))).all().all():
-            match_marking_tempo.to_csv(self.match_file)
+            match_marking_tempo.to_csv(self.match_file, index=False)
 
         return match_marking_tempo
 
 
-def process_ATEPP():
-    """process the entire ATEPP dataset with ESP and write the attributes"""
-
-    meta_csv = pd.read_csv(DATA_CSV)
-    meta_attributes = copy.deepcopy(meta_csv)
-
-    # only include those who have a valid alignment
-    meta_attributes = meta_attributes[~meta_attributes['valid_match'].isna()]
-    
-    for attribute in ATTRIBUTES:
-        meta_attributes[attribute] = np.nan
-    for idx, row in tqdm(meta_attributes.iterrows()):
-        # if ("Barcarolle_Op._60" in match_file) or ("Barcarolle_in_F-Sharp_Major,_Op._60" in match_file):
-        #     continue
-
-        esp = ExpressionStyleProfile(
-            f"{DATA_DIR}/{row['midi_path']}",
-            f"{DATA_DIR}/{row['score_path']}",
-            match_file=f"{DATA_DIR}/{row['valid_match']}")
-
-        attributes = esp.get_attributes()
-
-        for k, v in attributes.items():
-            meta_attributes.at[idx, k] = v
-    
-    meta_attributes.to_csv("attributes.csv", index=False)
-    return meta_attributes
-
-
-if __name__ == "__main__":
-
-    # esp = ExpressionStyleProfile("examples/mozart_match.csv", "examples/mozart.xml")
-    # esp.get_attributes()
-    # print(esp)
-
-    process_ATEPP()

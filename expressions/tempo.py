@@ -6,7 +6,7 @@ from utils import calculate_tempo
 
 def tempo_attributes(match):
     return {
-            "st_tempo_std": match['tempo'].std()
+            "sp_tempo_std": match['tempo'].std()
         }
 
 def plot_tempo(match, smoothing_window=0):

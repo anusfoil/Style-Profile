@@ -23,7 +23,6 @@ def dynamics_correspondence(match):
 
 def dynamics_attributes(match):
     dynamics = dynamics_correspondence(match)
-    
     if len(dynamics) < 2:
         return {
         "sp_dynamics_agreement": np.nan,
@@ -35,7 +34,10 @@ def dynamics_attributes(match):
     for marking1, marking2 in zip(dynamics, dynamics[1:]):
         m1, v1 = marking1
         m2, v2 = marking2
+        if (v1 == v2): # preventing correlation returning nan when the values are constant
+            v2 = v2 + 1e-5
         tau, _ = stats.kendalltau([v1, v2], [OLS.index(m1), OLS.index(m2)])
+        assert(tau == tau) # not nan
         tau_total += tau
     
     # consistency: how much fluctuations does each marking have 

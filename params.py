@@ -1,0 +1,18 @@
+
+ATEPP_DATA_CSV = "../Datasets/ATEPP-1.1/ATEPP-metadata-1.3.csv"
+ATEPP_DATA_DIR = "../Datasets/ATEPP-1.1/"
+
+ASAP_DATA_CSV = "../Datasets/asap-dataset/metadata-v1.0.csv"
+ASAP_DATA_DIR = "../Datasets/asap-dataset/"
+
+ATEPP_ATTRIBUTES = "./outputs/atepp_attributes.csv"
+# ATEPP_ATTRIBUTES = "../outputs/attributes_old.csv"
+ASAP_ATTRIBUTES = "../asap_attributes.csv"
+
+ATTRIBUTES = ["sp_async_delta", "sp_async_cor_onset", "sp_async_cor_vel", 
+                # "sp_async_voice_std",
+                "sp_duration_percentage", "sp_key_overlap_ratio", "sp_kor_repeated", "sp_kor_staccato", "sp_kor_legato",
+                "sp_tempo_std",
+                "sp_dynamics_agreement", "sp_dynamics_consistency_std",
+                "sp_phrasing_rubato_w", "sp_phrasing_rubato_q"
+                ]

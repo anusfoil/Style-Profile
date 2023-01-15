@@ -6,9 +6,6 @@ import partitura as pt
 
 import hook
 
-DATA_CSV = "../Datasets/ATEPP-1.1/ATEPP-metadata-1.3.csv"
-DATA_DIR = "../Datasets/ATEPP-1.1/"
-
 ###################################
 ### MATCH AND ALIGNMENTS
 ###################################
@@ -117,9 +114,8 @@ def parse_dynamic_markings(match, sc):
     # append the dynamic markings to the score 
     TPQN = sc.dynamics[0].start.quarter
     dynamics = [(dyn.start.t / TPQN, dyn.end.t / TPQN, dyn.text) for dyn in sc.dynamics 
-                    if (dyn.start and dyn.end and dyn.start.t < match.iloc[-1]['score_time'])]
+                    if (dyn.start and dyn.end and (dyn.start.t / TPQN) < match.iloc[-1]['score_time'])]
 
-    match['dynamics_marking'] = ""
     match_idx = 0
     for dm_start, dm_end, dm_text in dynamics: 
         while(match.iloc[match_idx]['score_time'] < dm_start): # move to the marking starting position
@@ -136,7 +132,6 @@ def parse_dynamic_markings(match, sc):
 
 def parse_articulation_markings(match, sc):
     legato_voice = []
-    match['articulation_marking'] = ""
 
     # add articulation to the match file
     for note in sc.notes:
@@ -150,27 +145,31 @@ def parse_articulation_markings(match, sc):
             if len(found_note):
                 match.at[found_note.index, "articulation_marking"] = "legato"
 
-        if note.slur_starts: 
+        if note.slur_starts and (type(note) != pt.score.GraceNote): 
             legato_voice.append(note.voice) # the successive notes in the same voice are covered by legato slur.          
             found_note = find_note_from_match(note, match)
             if len(found_note):
                 match.at[found_note.index, "articulation_marking"] = "legato"
 
         if note.slur_stops:
-            legato_voice.remove(note.voice)
+            # reminder: there might be case where the slur_starts show up after slur_stops. The case should be grace note
+            if note.voice in legato_voice:
+                legato_voice.remove(note.voice)
 
     return match
 
 def parse_score_markings(match, score):
     """parse the score using partitura package, link the score attributes with the note-match list """
-    try:
-        sc = pt.load_score_as_part(score)
-    except:
-        return match
 
-    if 'dynamics_marking' not in match:
+    if ('dynamics_marking' not in match) or ('articulation_marking' not in match):
+        match['dynamics_marking'] = ""
+        match['articulation_marking'] = ""
+        try:
+            sc = pt.load_score_as_part(score)
+        except:
+            return match
+
         match = parse_dynamic_markings(match, sc)
-    if 'articulation_marking' not in match:
         match = parse_articulation_markings(match, sc)
 
     return match
@@ -196,38 +195,6 @@ def calculate_tempo(match):
 
     return match.round(6)
 
-
-def update_all_match_with_score_features():
-    """ For general information like tempo or markings from score,  we pre-compute them and update on the match file to save as csv.
-    note: only valid match will have CSV saved. 
-
-    updated information: 
-        offset: score offset = score_start + score_dur
-        ibi: annotated in an on-event basis  
-        tempo: in beats-per-minute
-        dynamics: marking on the event.  
-        articulation: marking on the event.
-
-    """
-    all_match_files = glob.glob(f"{DATA_DIR}/**/*_match.txt", recursive=True)
-
-    for idx, match_file in tqdm(enumerate(all_match_files)):
-        # if idx < 3086:
-        #     continue
-        match = parse_match(match_file)
-
-        if type(match) == pd.DataFrame:
-            score_for_match = glob.glob(f"{match_file[:-15]}/*xml", recursive=True)
-
-            match_with_offset = get_score_offsets(match)
-
-            match_with_marking = parse_score_markings(match_with_offset, score_for_match[0]) # dynamics 
-
-            match_marking_tempo = calculate_tempo(match_with_marking) 
-
-            match_marking_tempo.to_csv(match_file[:-4] + ".csv", index=False)
-
-    return 
 
 
 ###################################
@@ -355,6 +322,29 @@ def match_preludes():
     return
 
 
+def update_asap_performer():
+    asap_metadata = pd.read_csv("../Datasets/asap-dataset/metadata.csv")
+    asap_maestro = asap_metadata[~asap_metadata['maestro_midi_performance'].isna()]
+
+    year = asap_maestro['maestro_midi_performance'].str[10:14]
+    id = asap_maestro['midi_performance'].str.split("/").str[-1]
+    id = id.str.split(r"\d", expand=True)[0]
+
+    asap_maestro["performer"] = year + id
+
+    asap_nonmaestro = asap_metadata[asap_metadata['maestro_midi_performance'].isna()]
+    nonmaestro_id = asap_nonmaestro['midi_performance'].str.split("/").str[-1].str.split(r"\d", expand=True)[0]
+    uniqueid = pd.Series(asap_maestro["performer"].unique())
+    nonmaestro_unique = nonmaestro_id.apply(lambda x: len(uniqueid[uniqueid.str.contains(x + r"$")]) == 1)
+    
+    nonmaestro_matched = asap_nonmaestro[nonmaestro_unique]
+    nonmaestro_id_matched = nonmaestro_id[nonmaestro_unique]
+    nonmaestro_matched['performer'] = nonmaestro_id_matched.apply(lambda x: uniqueid[uniqueid.str.contains(x + r"$")].iloc[0])
+
+    asap_metadata = pd.concat([asap_maestro, nonmaestro_matched])
+    asap_metadata.to_csv("../Datasets/asap-dataset/metadata-v1.0.csv", index=False)
+    
+    return 
 
 
 if __name__ == "__main__":
@@ -362,9 +352,11 @@ if __name__ == "__main__":
     # generate_alignments()
     # match_preludes()
 
-    match = parse_match("../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/05512_match.csv")
+    # match = parse_match("../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/05512_match.csv")
     # match = parse_match('../Datasets/ATEPP-1.1//Franz_Schubert/Piano_Sonata_No.13_in_A,_D.664/3._Allegro/03975_match.csv')
-    parse_score_markings(match, "../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/score.xml")
+    # parse_score_markings(match, "../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/score.xml")
     # update_match_with_score_features()
     # data_stats()
+    update_asap_performer()
+    
     pass

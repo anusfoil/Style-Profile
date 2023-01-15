@@ -15,7 +15,7 @@ sp_async_delta: 0.0134
 sp_async_cor_onset: 0.443
 sp_async_cor_vel: 0.5233
 sp_async_parts: 0
-st_tempo_std: 27.6051
+sp_tempo_std: 27.6051
 sp_duration_percentage: 0.8588
 sp_key_overlap_ratio: -0.2018
 sp_kor_legato: -0.1129
@@ -31,7 +31,9 @@ sp_phrasing_rubato_q: 5.1833
 
 #### Aligned match file
 
+```
 
+```
 
 An analysis workflow is as follows: 
 ![workflow](docs/workflow.png)
@@ -43,13 +45,15 @@ An analysis workflow is as follows:
 ### Asynchrony 
 
 For each piece, all same-onset group with more than 3 events are considered, and their performed onset asynchrony are studied with the following attributes.
+
 ```sp_asynchrony_delta```: The average amount of asynchrony time (in seconds) of the same-onset group played in the piece.
 
 ```sp_asynchrony_cor_pitch```: The Pearson's correlation of the notes' onsets with their pitch. 
 
 ```sp_asynchrony_cor_vel```: The Pearson's correlation of the notes' onsets with their velocity. See [this paper](https://asa.scitation.org/doi/10.1121/1.1376133). 
 
-```sp_asynchrony_cor_voice```: The Pearson's correlation of the notes' onsets with their voice rank (parsed from score, might not be accurate).
+```sp_asynchrony_voice_std```: For the same-onset group with different voices, find out the standard deviation of their onset time among each voice group. Averaged across all onset-groups.
+(voice information parsed from score).
 
 
 ### Articulation
