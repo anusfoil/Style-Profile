@@ -5,7 +5,6 @@ import music21 as m21
 
 def get_async_groups(match):
     """returns the chords or intervals that has the same metrical start time"""
-    match = match[match['error_index'] == 0]
     onset_groups = match.groupby(['score_time']).groups
     onset_groups = {k:v for k, v in onset_groups.items() if len(v) > 1}
     return onset_groups

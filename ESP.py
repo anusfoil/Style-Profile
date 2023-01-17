@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+import partitura as pt
 from expressions.asynchrony import *
 from expressions.tempo import *
 from expressions.articulation import *
@@ -20,6 +21,7 @@ class ExpressionStyleProfile(object):
     def __init__(self, perf_file, score_file, match_file=None):
         self.perf_file = perf_file
         self.score_file = score_file
+        self.valid = True
 
         if match_file:
             self.match_file = match_file
@@ -28,21 +30,28 @@ class ExpressionStyleProfile(object):
             self.match_file = self.perf_file[:-4] + "_match.txt"
             if not os.path.exists(self.match_file):
                 print("aligning...")
-                align_perf_score(self.perf_file[:-4], self.score_file[:-4])
+                align_perf_score(self.perf_file[:-4], ".".join(self.score_file.split(".")[:-1]), score_format=self.score_file.split(".")[-1])
+
+            if not os.path.exists(self.match_file):
+                print("no alignment generated!")
+                self.valid = False
+                return
 
         print("parsing_match...")
         self.match = self.parse_match(self.match_file)
         self.match = self.validate_match(self.match)
-        self.match = self.parse_score_features_to_match(self.match) 
-        if not match_file:
-            self.match_file = self.perf_file[:-4] + "_match.csv"
-            self.match.to_csv(self.match_file, index=False) 
+        if type(self.match) == pd.DataFrame:
+            self.match = self.parse_score_features_to_match(self.match) 
+            if not match_file:
+                self.match_file = self.perf_file[:-4] + "_match.csv"
+                self.match.to_csv(self.match_file, index=False) 
 
+            print("getting attributes...")
+            self.attributes = self.get_attributes()
+        else:
+            print("this match is not valid!")
+            self.valid = False
 
-        print("getting attributes...")
-        self.attributes = self.get_attributes()
-
-        return        
 
     def __str__(self):
         result = ""
@@ -90,6 +99,7 @@ class ExpressionStyleProfile(object):
         """
         parse the raw match from .txt file or .csv file. Normalize score time and add measure information
         doesn't validate or add score markings
+        parse .match file with partitura package
 
         returns: pandas dataframe with matched notes information
         """
@@ -97,7 +107,7 @@ class ExpressionStyleProfile(object):
         if (match_file[-4:] == ".csv"):
             match = pd.read_csv(match_file)
 
-        else:
+        elif (match_file[-4:] == ".txt"):
             columns = ["ID", "onset_time", "offset_time", "spelled_pitch", "onset_velocity", 
                 "offset_velocity", "channel", "match_status", "score_time", "score_dur", "voice", 
                 "note_ID", "error_index", "skip_index"]
@@ -119,10 +129,17 @@ class ExpressionStyleProfile(object):
 
                 """parse measures from the note id information """
                 match['measure'] = match['note_ID'].apply(get_measure)
-        
+        elif (match_file[-6:] == ".match"):
+            match = dataframe_from_matchfile(match_file)
+            match.to_csv(match_file.replace("match", "csv"), index=False)
+
+            pass
+
         return match
 
     def validate_match(self, match):
+        if 'error_index' not in match.columns:
+            return match
 
         # large trunck of extra notes: might be repeat
         error_note = match[match['error_index'] != 0]

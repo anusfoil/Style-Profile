@@ -42,7 +42,8 @@ def align_perf_score(perf, score, score_format="musicxml", use_matched=True):
         os.system(f"./AlignmentTool_v190813/XMLToMIDIAlign.sh {score} {perf}")
     elif score_format == "musicxml":
         os.system(f"./AlignmentTool_v190813/MusicXMLToMIDIAlign.sh {score} {perf}")
-    
+    elif score_format == "mid":
+        os.system(f"./AlignmentTool_v190813/MIDIToMIDIAlign.sh {score} {perf}")    
     
     """remove the artifacts after matching"""
     if os.path.exists(f"{perf}_spr.txt"): 
@@ -88,6 +89,77 @@ def generate_alignments():
         else:
             print("score doesn't exist! " + score)
             continue
+
+def dataframe_from_matchfile(match_path):
+    """adapted from partitura package importmatch.py alignment_from_matchfile
+
+    read .match file and returns a dataframe with note and snote information.
+    """
+    mf = pt.io.importmatch.MatchFile(match_path)
+
+    result = []
+    assert(mf.info()[-2].Attribute == "midiClockUnits")
+    TPQN = mf.info()[-2].Value
+
+    for line in mf.lines:
+        if isinstance(line, pt.io.importmatch.MatchSnoteNote):
+            result.append(
+                dict(
+                    ID=line.note.Number,
+                    onset_time=round(line.note.Onset / TPQN, 3),
+                    offset_time=round(line.note.Offset / TPQN, 3),
+                    spelled_pitch=spelled_pitch,
+                    onset_velocity=line.note.Velocity,
+                    channel=line.note.Channel,
+                    score_time=line.snote.OnsetInBeats,
+                    score_dur=line.snote.DurationInBeats,
+                    voice=0, # doesn't seems to find voice information
+                )
+            )
+        elif isinstance(line, pt.io.importmatch.MatchSnoteNoteNew):
+            modifier = "#" if line.snote.Modifier == 1 else ""
+            if line.snote.Modifier == -1: modifier = "b" 
+            spelled_pitch = f"{line.snote.NoteName}{modifier}{line.snote.Octave}"
+            result.append(
+                dict(
+                    ID=line.note.Number,
+                    onset_time=round(line.note.Onset / TPQN, 3),
+                    offset_time=round(line.note.Offset / TPQN, 3),
+                    spelled_pitch=spelled_pitch,
+                    onset_velocity=line.note.Velocity,
+                    channel=line.note.Channel,
+                    score_time=line.snote.OnsetInBeats,
+                    score_dur=line.snote.DurationInBeats,
+                    voice=0, # doesn't seems to find voice information
+                )
+            )
+
+        elif isinstance(line, pt.io.importmatch.MatchSnoteDeletion):
+            if "leftOutTied" in line.snote.ScoreAttributesList:
+                continue
+            else:
+                # result.append(dict(label="deletion", score_id=line.snote.Anchor))
+                pass
+        elif isinstance(line, pt.io.importmatch.MatchInsertionNote):
+            # result.append(dict(label="insertion", performance_id=line.note.Number))
+            pass
+        elif isinstance(line, pt.io.importmatch.MatchOrnamentNote):
+            if isinstance(line, pt.io.importmatch.MatchTrillNote):
+                ornament_type = "trill"
+            else:
+                ornament_type = "generic_ornament"
+            # result.append(
+            #     dict(
+            #         label="ornament",
+            #         score_id=line.Anchor,
+            #         performance_id=line.note.Number,
+            #         type=ornament_type,
+            #     )
+            # )
+
+    result = pd.DataFrame(result)
+    return result
+
 
 ###################################
 ### SCORE FEATURES AND TEMPO
