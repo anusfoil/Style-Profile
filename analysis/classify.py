@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0,'..')
+sys.path.extend(['..', '.'])
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -43,10 +43,10 @@ def classify(meta_attributes, plot=False):
     print(len(meta_attributes))
     print(meta_attributes.columns)
 
-    division = 'artist'
+    division = 'composer'
 
     artists_counts=meta_attributes[division].value_counts() # remove class with few data
-    filtered_labels = artists_counts[artists_counts>50].index
+    filtered_labels = artists_counts[artists_counts>40].index
     meta_attributes = meta_attributes[meta_attributes[division].isin(filtered_labels)]
     print(filtered_labels)
 
@@ -99,5 +99,9 @@ def classify(meta_attributes, plot=False):
 
 
 if __name__ == "__main__":
-    classify(pd.read_csv(ATEPP_ATTRIBUTES) )
+    # classify(pd.read_csv(ASAP_ATTRIBUTES).drop(columns=[
+    #     "maestro_midi_performance", "maestro_audio_performance",
+    #     "start", 'end', 'audio_performance']) )
+    classify(pd.read_csv(ATEPP_ATTRIBUTES))
+    # classify(pd.read_csv(VIENNA422_ATTRIBUTES))
     # anova()

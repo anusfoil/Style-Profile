@@ -26,14 +26,9 @@ sp_dynamics_consistency_std: 11.1639
 sp_phrasing_rubato_w: 0.5803
 sp_phrasing_rubato_q: 5.1833
 """
-
 ```
+Presentation on the motivation, implementation and Analysis on the first release: [Slides](https://docs.google.com/presentation/d/1T-6AUHkvUZUoOSi2VLTEavtYQYLw3NQ8lbjgpOMm2WU).
 
-#### Aligned match file
-
-```
-
-```
 
 An analysis workflow is as follows: 
 ![workflow](docs/workflow.png)
@@ -92,49 +87,3 @@ Rubato w and q: inspired from [this paper](https://www.researchgate.net/publicat
 
 ### Textural 
 
-## Stats
-
-#### ATEPP 
-
-|  |  |
-| ----------- | ----------- |
-| #. total pieces                           |  11672 |
-| #. pieces with xml score                  |  6838  |
-| #. pieces aligned                         |  4138  |
-| #. valid alignment (<50% err)             |  3752  |
-| #. pieces with scores parsed by partitura |        |
-| #. pieces with dynamics marking           |  3434  |
-| #. pieces with all attributes computed    |  1201  |
-
-#### ASAP
-
-|  |  |
-| ----------- | ----------- |
-| #. total pieces                           |   |
-| #. pieces with xml score                  |    |
-| #. pieces aligned                         |    |
-| #. valid alignment (<50% err)             |    |
-| #. pieces with scores parsed by partitura |        |
-| #. pieces with dynamics marking           |    |
-| #. pieces with all attributes computed    |    |
-
-
-## Significance and analysis
-
-#### ATEPP: Performer significance: One-way ANOVA
-|  ```sp_asynchrony_delta```| ```sp_asynchrony_cor_pitch``` | ```sp_asynchrony_cor_vel``` | ```sp_articulation_ratio``` | ```sp_dynamics_agreement``` | ```sp_dynamics_consistency_std```
-| ----------- | ----------- | ----------- | ----------- | ----------- | ----------- |
-| 0.028   |  3e-10 | 4.39e-8 |  | 0.401 | 0.0003 |  
-
-
-
-#### ATEPP: Classification F1: Perfomer vs Composer
-
-Data support: ~1200 (debugging nan values)
-
-| attributes | DTree | GradientBoosting | MLP | 
-| ----------- | ----------- | ----------- | ----------- |
-|  async  | 0.25 (0.1)  | 0.16 (0.07) | 0.27 (0.11) |
-|  async+dynamics+articulation  | 0.38 (0.19)  | 0.41 (0.09) | 0.29 (0.08) |
-
-#### Significance analysis of attributes

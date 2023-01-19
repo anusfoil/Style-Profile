@@ -3,6 +3,7 @@ import pandas as pd
 from tqdm import tqdm
 import numpy as np
 import partitura as pt
+from params import *
 
 import hook
 
@@ -282,31 +283,31 @@ def data_stats():
         - pieces with scores parsed by partitura 
         - pieces with dynamics 
     """
-    meta_csv = pd.read_csv(DATA_CSV)
+    meta_csv = pd.read_csv(ASAP_ATTRIBUTES)
 
-    data_with_score = meta_csv[~meta_csv["score_path"].isna()]
-    midi_list = data_with_score["midi_path"].tolist()
-    score_list = data_with_score["score_path"].tolist()
+    data_with_score = meta_csv[~meta_csv["midi_score"].isna()]
+    aligned_valid = meta_csv[~meta_csv["sp_async_delta"].isna()]
 
     # hook()
-    data_aligend_count, aligned_valid_count, with_dynamics_count = 0, 0, 0
-    for perf, score in tqdm(zip(midi_list, score_list)):
-        perf = DATA_DIR + perf[:-4]
-        score = DATA_DIR + ".".join(score.split(".")[:-1])
+    data_aligend_count, aligned_valid_count, with_dynamics_count, with_articulation_count = 0, 0, 0, 0
 
+    aligned_valid_count = len(aligned_valid)
+    # for _, row in aligned_valid.iterrows():
+    #     match = pd.read_csv(ATEPP_DATA_DIR + row['valid_match'])
+    #     with_dynamics_count += ~match['dynamics_marking'].isna().all()
+    #     with_articulation_count += ~match['articulation_marking'].isna().all()
 
-        if os.path.exists(perf + "_match.txt"):
-            data_aligend_count += 1
-            aligned_valid_count += (type(parse_match(perf + "_match.txt")) != None)
-            
-            match = parse_match(perf + "_match.csv")
-            with_dynamics_count += ~match['dynamics_marking'].isna().all()
-    
+    num_performers = len(aligned_valid['performer'].unique())
+    num_composers = len(aligned_valid['composer'].unique())
+
     print(f"Total data: {len(meta_csv)}")
     print(f"Data with score: {len(data_with_score)}")
-    print(f"Data aligned: {data_aligend_count}")
+    # print(f"Data aligned: {data_aligend_count}")
     print(f"Data valid alignment: {aligned_valid_count}")
     print(f"Data with dynamics: {with_dynamics_count}")
+    print(f"Data with articulation: {with_articulation_count}")
+    print(f"Num. composers: {num_composers}")
+    print(f"Num. performers: {num_performers}")
 
 
 def remove_all_matched():
@@ -429,6 +430,6 @@ if __name__ == "__main__":
     # parse_score_markings(match, "../Datasets/ATEPP-1.1/Wolfgang_Amadeus_Mozart/Piano_Sonata_No._17_in_B-Flat_Major,_K._570/I._Allegro/score.xml")
     # update_match_with_score_features()
     # data_stats()
-    update_asap_performer()
+    # update_asap_performer()
     
     pass

@@ -21,10 +21,14 @@ ALL_ATTRIBUTES = ["sp_async_delta", "sp_async_cor_onset", "sp_async_cor_vel", "s
                 "sp_phrasing_rubato_w", "sp_phrasing_rubato_q"
                 ]
 
-ATTRIBUTES = ["sp_async_delta", "sp_async_cor_onset", "sp_async_cor_vel", "sp_async_voice_std",
-                "sp_duration_percentage", "sp_key_overlap_ratio", "sp_kor_repeated", 
+ATTRIBUTES = [
+                "sp_async_delta", 
+                "sp_async_cor_onset", "sp_async_cor_vel", 
+                # "sp_async_voice_std",
+                # "sp_duration_percentage", "sp_key_overlap_ratio", 
+                # "sp_kor_repeated", 
                 # "sp_kor_staccato", "sp_kor_legato",
                 "sp_tempo_std",
-                "sp_dynamics_agreement", "sp_dynamics_consistency_std",
-                "sp_phrasing_rubato_w", "sp_phrasing_rubato_q"
+                # "sp_dynamics_agreement", "sp_dynamics_consistency_std",
+                # "sp_phrasing_rubato_w", "sp_phrasing_rubato_q"
                 ]
