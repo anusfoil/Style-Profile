@@ -2,7 +2,7 @@ import numpy as np
 from scipy import stats
 # from utils import *
 
-OLS = ["pp", "p", "mp", "mf", "f", "f"]
+OLS = ["pp", "p", "mp", "mf", "f", "ff"]
 
 def dynamics_correspondence(match):
     """Find the velocity for each marking position

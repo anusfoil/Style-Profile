@@ -27,7 +27,7 @@ sp_phrasing_rubato_w: 0.5803
 sp_phrasing_rubato_q: 5.1833
 """
 ```
-Presentation on the motivation, implementation and Analysis on the first release: [Recording](https://drive.google.com/file/d/1oHCi5bJ6q7XO_Hbx0bSAG-9P2IkSQA8-/view?usp=sharing) [Slides](https://docs.google.com/presentation/d/1T-6AUHkvUZUoOSi2VLTEavtYQYLw3NQ8lbjgpOMm2WU).
+Presentation on the motivation, implementation and analysis on the first release: [Recording](https://drive.google.com/file/d/1oHCi5bJ6q7XO_Hbx0bSAG-9P2IkSQA8-/view?usp=sharing) [Slides](https://docs.google.com/presentation/d/1T-6AUHkvUZUoOSi2VLTEavtYQYLw3NQ8lbjgpOMm2WU).
 
 
 An analysis workflow is as follows: 

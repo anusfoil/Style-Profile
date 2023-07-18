@@ -1,8 +1,9 @@
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from numpy.lib.recfunctions import append_fields
 from params import *
-import hook
+from process_datasets import *
 
 legend_position = {
     "sp_async_delta": 0.7, 
@@ -40,34 +41,42 @@ def plot_by_performer(meta_attributes):
         # plt.show()
 
 
-def plot_by_dataset():
-    atepp_attributes = pd.read_csv(ATEPP_ATTRIBUTES)
-    asap_attributes = pd.read_csv(ASAP_ATTRIBUTES)
-    vienna422_attributes = pd.read_csv(VIENNA422_ATTRIBUTES)
+def plot_by_dataset(dataset="ASAP", attri="articulation_feature.kor", level="note"):
+    """plot the overall distribution of each attributes from the dataset. 
+    load the performance features as numpy structured array list, with optional metadata.
+    Save figure to
 
-    all_datasets = pd.concat([atepp_attributes, asap_attributes, vienna422_attributes])
-    all_datasets['dataset'] = ""
-    all_datasets.iloc[0:3550,  -1] = "ATEPP"
-    all_datasets.iloc[3550:4277, -1] = "ASAP"
-    all_datasets.iloc[4277:4365, -1] = "VIENNA422"
-    all_datasets.index = range(0,len(all_datasets))
+    Args:
+        dataset (str): dataset to use. Defaults to "ASAP".
+    """
+    pf, meta_dict = load_dataset_pf(dataset=dataset, return_metadata=True)
+
+    if level == "piece":
+        # get piece-level attributes and append the metadata
+        pf_piece_concat = pd.concat([pd.DataFrame(feats).mean().to_frame().T for feats in pf], ignore_index=True)
+        pf_piece_concat['composer'] = meta_dict['composer']
+        pf_piece_concat['performer'] = meta_dict['performer']
+        pf_plot_data = pf_piece_concat
+    elif level == "note":
+        pf = [append_fields(feats, "composer", [meta_dict['composer'][i]] * len(feats), dtypes="U256", usemask=False) for i, feats in enumerate(pf)]
+        pf = [append_fields(feats, "performer", [meta_dict['performer'][i]]* len(feats), dtypes="U256", usemask=False) for i, feats in enumerate(pf)]
+        pf_note_concat = pd.concat([pd.DataFrame(feats) for feats in pf])
+        pf_plot_data = pf_note_concat     
 
     sns.set_style("darkgrid")
-    # for attri in ALL_ATTRIBUTES:
-    attri = ALL_ATTRIBUTES[12]
-    ax = sns.histplot(all_datasets, x=attri, hue="dataset", stat='density', common_norm=False)
-    if attri == "sp_async_delta":
-        ax.set(xlim=(0, 0.2))
-    if attri == "sp_phrasing_rubato_q": 
-        ax.set(xlim=(-1e4, 1e4))
+    g = sns.FacetGrid(pf_piece_concat, col="composer", hue="performer")
+    g.map(sns.histplot, attri, stat='density', common_norm=False)
+    
+    for attri in pf[0].dtype.names:
+        g.map(sns.histplot, attri, stat='density', common_norm=False)
+        # sns.histplot(pf_piece_concat, x=attri, stat='density', common_norm=False)
+        plt.show()
+        hook()
     # sns.move_legend(ax, "center right", bbox_to_anchor=(legend_position[attri], .5))
     # plt.legend(loc='center right', title='Team')
     # plt.savefig(f"analysis/cross_datasets/{attri}.png")
     plt.show()
-        # hook()
 
 
 if __name__ == "__main__":
-    # plot_by_performer(pd.read_csv(ATEPP_ATTRIBUTES))
-    plot_by_dataset()
-    pass
+    plot_by_dataset(dataset="ASAP", attri='asynchrony_feature.delta')
