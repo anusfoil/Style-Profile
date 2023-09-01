@@ -79,4 +79,18 @@ def plot_by_dataset(dataset="ASAP", attri="articulation_feature.kor", level="not
 
 
 if __name__ == "__main__":
-    plot_by_dataset(dataset="ASAP", attri='asynchrony_feature.delta')
+    # plot_by_dataset(dataset="ASAP", attri='asynchrony_feature.delta')
+
+    score_path = '/Users/huanzhang/01Acdemics/PhD/Research/Datasets/asap-dataset-alignment/Brahms/Six_Pieces_op_118/2/xml_score.musicxml'
+    # score = pt.score.merge_parts(pt.load_musicxml(score_path).parts)
+    score = pt.score.unfold_part_maximal(pt.score.merge_parts(pt.load_musicxml(score_path).parts)) 
+    alignment = pt.io.importparangonada.load_alignment_from_ASAP('/Users/huanzhang/01Acdemics/PhD/Research/Datasets/asap-dataset-alignment/Brahms/Six_Pieces_op_118/2/Shilyaev03_note_alignments/note_alignment.tsv')
+    performance = pt.load_performance('/Users/huanzhang/01Acdemics/PhD/Research/Datasets/asap-dataset-alignment/Brahms/Six_Pieces_op_118/2/Shilyaev03.mid')
+
+    pf, res = pt.musicanalysis.compute_performance_features(score, performance, alignment, 
+                                                            feature_functions=['articulation_feature'],
+                                                            return_articulation_mask=True)
+    x = pd.DataFrame(pf['articulation_feature.kor'])
+    art_mask = pd.DataFrame(res['articulation_mask'])
+    art_mask['legato'].unique()
+    hook()
