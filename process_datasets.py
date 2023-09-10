@@ -53,18 +53,28 @@ def load_dataset_pf(datasets=['ASAP'], return_metadata=False):
             meta_dict["performer"].extend([path.split("/")[-1].split("_")[0] for path in pf_paths])
 
         if dataset == "ATEPP":
-            pf_paths.extend(glob.glob(os.path.join(ATEPP_DIR, "**/*.npy"), recursive=True))
+            pf_paths.extend(glob.glob(os.path.join(ATEPP_DIR, "**/*[!_].npy"), recursive=True))
             meta_csv = pd.read_csv(ATEPP_META_DIR)
             meta_dict["performer"].extend([meta_csv[meta_csv['midi_path'].str.contains(
                                             path.split("/")[-1][:5])]['artist'] for path in pf_paths])
             meta_dict['performer'] = [info.item() if len(info) == 1 else "unfound" for info in meta_dict['performer'] ]
             meta_dict["composer"].extend( [path.split("/")[3] for path in pf_paths])
-        if dataset == "BMZ":
-            pf_paths.extend(glob.glob(os.path.join(BMZ_MATCH_DIR, "**/*.npy"), recursive=True))
-            composer = [path.split("/")[-1].split("_")[0] for path in pf_paths]
-            meta_dict["composer"].extend(composer)
-            # TODO: change this
-            meta_dict["performer"].extend(["Magdaloff" if c == "chopin" else "Zeillinger" for c in composer])
+
+        if dataset == "Batik":
+            pf_paths.extend(glob.glob(os.path.join(BMZ_MATCH_DIR, "**/[m]*.npy"), recursive=True))
+            meta_dict["composer"].extend(["Mozart" for _ in pf_paths])
+            meta_dict["performer"].extend(["Batik" for _ in pf_paths])
+
+        if dataset == "Magdaloff":
+            pf_paths.extend(glob.glob(os.path.join(BMZ_MATCH_DIR, "**/[c]*.npy"), recursive=True))
+            meta_dict["composer"].extend(["Chopin" for _ in pf_paths])
+            meta_dict["performer"].extend(["Magdaloff" for _ in pf_paths])
+
+        if dataset == "Zeillinger":
+            pf_paths.extend(glob.glob(os.path.join(BMZ_MATCH_DIR, "**/[b]*.npy"), recursive=True))
+            meta_dict["composer"].extend(["Beethoven" for _ in pf_paths])
+            meta_dict["performer"].extend(["Zeillinger" for _ in pf_paths])
+
 
     pf = [np.load(path, allow_pickle=True) for path in pf_paths]
     if return_metadata:
@@ -297,12 +307,15 @@ def compute_performance_features(score_path, alignment_path, performance_path=No
 
 
 def get_atepp_overlap(): 
-    # get the atepp subset with pieces of more than 8+ performances
+    """get the atepp subset with pieces of more than 8+ performances
+    Returns: 
+    """
     atepp_meta = pd.read_csv(ATEPP_META_DIR)
     score_groups = atepp_meta.groupby(['score_path']).count().sort_values(['midi_path'], ascending=False)
-    selected_scores = score_groups.iloc[4:280]
-    hook()
-    return 
+    selected_scores = score_groups.iloc[4:216]
+    selected_score_folders = ["/".join(score_entry.name.split("/")[:-1]) for _, score_entry in selected_scores.iterrows()]
+
+    return selected_score_folders
 
 
 if __name__ == "__main__":
