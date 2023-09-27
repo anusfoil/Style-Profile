@@ -190,13 +190,20 @@ def process_dataset_pf(datasets=['ASAP'], only_return_paths=False):
             alignment_paths = glob.glob(os.path.join(ATEPP_DIR, "**/[!z]*n.csv"), recursive=True)
             performance_paths = [(aa[:-10] + ".mid") for aa in alignment_paths]
             score_paths = [glob.glob(os.path.join("/".join(pp.split("/")[:-1]), "*.*l"))[0] for idx, pp in enumerate(performance_paths)]
-        if "BMZ" in dataset:
-            alignment_paths = glob.glob(os.path.join(BMZ_MATCH_DIR, "**/*.match"), recursive=True)
-            alignment_paths = [p for p in alignment_paths if (("Take" not in p))][173:]
-            score_paths = [BMZ_MUSICXML_DIR + ap.split("/")[-1][:-6] + ".xml" for ap in alignment_paths]
-            score_paths = [sp[:-4] + ".musicxml" if "mozart" in sp else sp for sp in score_paths]
+        if "Batik" in dataset:
+            alignment_paths = glob.glob(os.path.join(BMZ_MATCH_DIR, "**/[m]*.match"), recursive=True)
+            score_paths = [BMZ_MUSICXML_DIR + ap.split("/")[-1][:-6] + ".musicxml" for ap in alignment_paths]
             performance_paths = [None] * len(alignment_paths) # don't use the given performance, use the aligned.
-        
+        if "Magdaloff" in dataset:
+            alignment_paths = glob.glob(os.path.join(BMZ_MATCH_DIR, "**/[c]*.match"), recursive=True)
+            score_paths = [BMZ_MUSICXML_DIR + ap.split("/")[-1][:-6] + ".xml" for ap in alignment_paths]
+            performance_paths = [None] * len(alignment_paths)
+        if "Zeillinger" in dataset:
+            alignment_paths = glob.glob(os.path.join(BMZ_MATCH_DIR, "**/[b]*.match"), recursive=True)
+            alignment_paths = [p for p in alignment_paths if (("Take" not in p))]
+            score_paths = [BMZ_MUSICXML_DIR + ap.split("/")[-1][:-6] + ".xml" for ap in alignment_paths]
+            performance_paths = [None] * len(alignment_paths) 
+                
         if only_return_paths:
             return alignment_paths, score_paths, performance_paths
 
@@ -318,18 +325,66 @@ def get_atepp_overlap():
     return selected_score_folders
 
 
+def get_min_voice():
+    x_total, marking_total, cons_total, nk_total, x_class, reg_total = [], [], [], [], [], []
+
+    for dataset in [
+                    'ASAP', 
+                    # 'VIENNA422', 
+                    # 'Batik', 
+                    # 'Magdaloff', 
+                    # 'Zeillinger'
+                    ]:
+        alignment_paths, score_paths, performance_paths = process_dataset_pf(datasets=[dataset], 
+                                                                            only_return_paths=True)
+        alignment_paths = alignment_paths
+        for s_path, p_path, a_path in tqdm(zip(score_paths, performance_paths, alignment_paths)):
+            try:
+                score = pt.load_musicxml(s_path)
+                if a_path[-3:] == "tsv":
+                    alignment = pt.io.importparangonada.load_alignment_from_ASAP(a_path)
+                    performance = pt.load_performance(p_path)
+                else:
+                    performance, alignment = pt.load_match(a_path)
+
+                if dataset == "ASAP" or dataset in ['Batik', 'Magdaloff', 'Zeillinger']: 
+                    for a in alignment:
+                        if 'score_id' in a and  "-" in a['score_id']:
+                            a['score_id'] = a['score_id'][:-2]
+
+                pf, res = pt.musicanalysis.compute_performance_features(score, performance, alignment, 
+                                                                        feature_functions=['articulation_feature'],
+                                                                        return_articulation_mask=True)
+
+                parameters, snote_ids, m_score = pt.musicanalysis.encode_performance(score, performance, alignment)
+                min_voice = min(m_score['voice'])
+                voice_mask = [m_score['voice'] == min_voice]
+                filtered_perf = pt.musicanalysis.decode_performance(
+                    score, parameters[voice_mask], snote_ids=np.array(snote_ids)[voice_mask])
+                voices = np.unique(m_score['voice'])
+                name = a_path.split("/")[-1] + np.array2string(voices)
+                pt.save_performance_midi(filtered_perf, f"min_voice_asap/{name}.mid")
+
+                # x = pd.DataFrame(pf['articulation_feature.kor'])
+            except:
+                continue
+
+
 if __name__ == "__main__":
 
+    import warnings
+    warnings.filterwarnings("ignore")
 
-    get_atepp_overlap()
-    # atepp_alignment()
-    # atepp_alignment_stats()
-    process_dataset_pf(datasets=[
-                                # "BMZ",
-                                # "VIENNA422",
-                                # "ASAP",
-                                "ATEPP",
-                                ])
+
+    # get_atepp_overlap()
+    # # atepp_alignment()
+    # # atepp_alignment_stats()
+    # process_dataset_pf(datasets=[
+    #                             # "BMZ",
+    #                             # "VIENNA422",
+    #                             # "ASAP",
+    #                             "ATEPP",
+    #                             ])
     
     # load_dataset_pf(datasets=[
     #                         # "BMZ",
