@@ -376,6 +376,39 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore")
 
 
+    from scipy.stats import f_oneway
+    import pandas as pd
+    all_tempos, all_asyncs, all_kors, all_labels, dataset = [], [], [], [], []
+    names = ['Schubert_D783_no15', 'Mozart_K331_1st-mov', 'Chopin_op38', 'Chopin_op10_no3'] # ()
+
+
+    for piece_idx, name in enumerate(names):
+        score = pt.load_musicxml(f"../Datasets/vienna4x22/musicxml/{name}.musicxml")
+        tempos, asyncs, kors = [], [], []
+        for idx, pianist in enumerate(range(1, 22)):
+            pianist = str(pianist).zfill(2)
+            performance = pt.load_performance(f"../Datasets/vienna4x22/midi/{name}_p{pianist}.mid")
+            performance, alignment = pt.load_match(f"../Datasets/vienna4x22/match/{name}_p{pianist}.match")
+
+            pf, res = pt.musicanalysis.compute_performance_features(score, performance, alignment, feature_functions="all")
+            parameters, _ = pt.musicanalysis.encode_performance(score, performance, alignment)
+            tempos.append(60 / parameters['beat_period'].mean())
+            asyncs.append(pf['asynchrony_feature.delta'].mean()) # maybe not mean?
+            kors.append(pf['articulation_feature.kor'].mean())
+            hook()
+            print(pf['articulation_feature.kor'].mean())
+
+
+        res = tempo_categorization(np.array(tempos), np.array(asyncs), np.array(kors))
+
+        for group, values in res.items():
+            N = len(values['tempos'])
+            all_labels.extend([group] * N)
+            all_asyncs.extend(values['asyncs'])
+            all_kors.extend(values['kors'])
+            dataset.extend(['VIENNA422'] * N)
+
+
     # get_atepp_overlap()
     # # atepp_alignment()
     # # atepp_alignment_stats()
